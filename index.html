@@ -143,7 +143,7 @@ tbody td{padding:6px 10px;font-family:var(--mono)}
   <div class="sh"><span class="st">Baseline — live computation from al_air_model.py</span><div class="sl"></div></div>
 
   <div class="ctrl">
-    <div class="ctrl-row"><label>Particle d (µm)</label><input type="range" id="b-d" min="5" max="200" value="100" oninput="sv('bv-d',this.value+'µm');debRunBaseline()"><span class="vval" id="bv-d">100µm</span></div>
+    <div class="ctrl-row"><label>Particle d (µm)</label><input type="range" id="b-d" min="5" max="500" value="100" oninput="sv('bv-d',this.value+'µm');debRunBaseline()"><span class="vval" id="bv-d">100µm</span></div>
     <div class="ctrl-row"><label>KOH (M)</label><input type="range" id="b-koh" min="15" max="80" value="35" oninput="sv('bv-koh',(this.value/10).toFixed(1)+'M');debRunBaseline()"><span class="vval" id="bv-koh">3.5M</span></div>
     <div class="ctrl-row"><label>Al vol% in paste</label><input type="range" id="b-vf" min="15" max="65" value="53" oninput="sv('bv-vf',this.value+'%');debRunBaseline()"><span class="vval" id="bv-vf">53%</span></div>
     <div class="ctrl-row"><label>Temperature (°C)</label><input type="range" id="b-T" min="10" max="75" value="60" oninput="sv('bv-T',this.value+'°C');debRunBaseline()"><span class="vval" id="bv-T">60°C</span></div>
@@ -460,7 +460,7 @@ async function runPolarisation(){
 }
 
 // ── SWEEPS ────────────────────────────────────────────────────────────────────
-const sweepDefaults={c_KOH:[1.5,8],'T_C':[10,75],'vf_pct':[15,65],'d_um':[5,200],'inh_pct':[0,100]};
+const sweepDefaults={c_KOH:[1.5,8],'T_C':[10,75],'vf_pct':[15,65],'d_um':[5,500],'inh_pct':[0,100]};
 document.getElementById('sw-param').addEventListener('change',function(){
   const d=sweepDefaults[this.value]||[0,100];
   document.getElementById('sw-lo').value=d[0];
