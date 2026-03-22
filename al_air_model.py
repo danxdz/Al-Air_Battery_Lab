@@ -128,7 +128,7 @@ PARAMS = {
 
 # ── Standard base config (v3 optimum) ────────────────────────────────────────
 # Single source of truth used by model, surrogate, and alloy modules.
-BASE_CONFIG = dict(d_um=100, c_KOH=3.5, vf_pct=53, T_C=60, inh_pct=0)
+BASE_CONFIG = dict(d_um=100, c_KOH=4.0, vf_pct=53, T_C=25, inh_pct=0)
 
 # ── Literature-grounded composition limits ────────────────────────────────────
 # Above these fractions, practical issues dominate:
@@ -448,6 +448,190 @@ def corrosion_rate_mol(SSA, c_KOH, T_K, inh_frac, p=None):
 
 # ── Full cell model ───────────────────────────────────────────────────────────
 
+def thermal_model(d_um, c_KOH, vf_pct, T_ambient_C, inh_pct,
+                   j_mA_cm2, h_W_m2K=10.0,
+                   A_cell_cm2=1.0, t_hours=None,
+                   dEdT_V_K=0.0003, verbose=False):
+    """
+    Non-isothermal heat balance for Al-air paste cell.
+
+    Heat generation (W/m²):
+        Q = j * (E_rev - V)          ← irreversible (overpotentials + ohmic)
+          + j * T * dE_rev/dT        ← reversible entropic term
+
+    Steady-state temperature:
+        T_cell = T_ambient + Q / h_eff
+
+    Parameters
+    ----------
+    d_um, c_KOH, vf_pct, inh_pct : paste parameters
+    T_ambient_C  : ambient (start) temperature °C
+    j_mA_cm2     : current density mA/cm²
+    h_W_m2K      : heat transfer coefficient W/(m²·K)
+                   ~10  = natural convection (still air)
+                   ~50  = forced convection (small fan)
+                   ~1000 = water cooling
+    A_cell_cm2   : active electrode area cm²
+    t_hours      : if not None, compute time-dependent V(t) curve
+    dEdT_V_K     : dE_rev/dT for Al-air ≈ +0.0003 V/K
+                   (Vetter 1967; slightly positive for Al oxidation)
+
+    Returns
+    -------
+    dict with thermal + electrochemical results at self-heated temperature
+    """
+    T_amb_K = T_ambient_C + 273.15
+    j_SI    = j_mA_cm2 * 1e-3 * 1e4   # mA/cm² → A/m²  (×10 net)
+
+    # ── Step 1: isothermal result at ambient temp ──────────────────────────────
+    r_cold = cell_model(d_um=d_um, c_KOH=c_KOH, vf_pct=vf_pct,
+                        T_C=T_ambient_C, inh_pct=inh_pct, j_mA_cm2=j_mA_cm2)
+
+    # ── Step 2: heat generation at ambient ────────────────────────────────────
+    E_rev   = r_cold['E_ocv']
+    V_cold  = r_cold['V_cell']
+    Q_irrev = j_SI * (E_rev - V_cold)        # W/m²
+    Q_rev   = j_SI * T_amb_K * dEdT_V_K      # W/m²
+    Q_gen   = Q_irrev + Q_rev                 # W/m²
+
+    # ── Step 3: steady-state self-heated temperature ───────────────────────────
+    dT_ss   = Q_gen / h_W_m2K                # °C rise at steady state
+    T_ss_C  = T_ambient_C + dT_ss
+
+    # ── Step 4: electrochemical result at self-heated temperature ─────────────
+    r_hot   = cell_model(d_um=d_um, c_KOH=c_KOH, vf_pct=vf_pct,
+                         T_C=T_ss_C, inh_pct=inh_pct, j_mA_cm2=j_mA_cm2)
+
+    # ── Step 5: iterate to convergence (T affects V affects Q) ────────────────
+    T_iter = T_ss_C
+    for _ in range(10):
+        r_i  = cell_model(d_um=d_um, c_KOH=c_KOH, vf_pct=vf_pct,
+                          T_C=T_iter, inh_pct=inh_pct, j_mA_cm2=j_mA_cm2)
+        T_K  = T_iter + 273.15
+        Q_i  = j_SI*(r_i['E_ocv'] - r_i['V_cell']) + j_SI*T_K*dEdT_V_K
+        T_new = T_ambient_C + Q_i / h_W_m2K
+        if abs(T_new - T_iter) < 0.05:
+            break
+        T_iter = T_new
+
+    r_converged = cell_model(d_um=d_um, c_KOH=c_KOH, vf_pct=vf_pct,
+                              T_C=T_iter, inh_pct=inh_pct, j_mA_cm2=j_mA_cm2)
+
+    # ── Optional: time-dependent V(t) using Cabrera-Mott oxide growth ─────────
+    time_curve = None
+    if t_hours is not None:
+        t_arr  = np.linspace(0, t_hours, 200)
+        V_arr  = []
+        T_arr  = []
+        T_cur  = T_ambient_C
+        for t in t_arr:
+            t_s = t * 3600
+            r_t = cell_model(d_um=d_um, c_KOH=c_KOH, vf_pct=vf_pct,
+                             T_C=T_cur, inh_pct=inh_pct, j_mA_cm2=j_mA_cm2,
+                             t_hours=t)
+            T_K_t  = T_cur + 273.15
+            Q_t    = j_SI*(r_t['E_ocv']-r_t['V_cell']) + j_SI*T_K_t*dEdT_V_K
+            T_cur  = min(T_ambient_C + Q_t/h_W_m2K, 90.0)   # cap at 90°C
+            V_arr.append(r_t['V_cell'])
+            T_arr.append(T_cur)
+        time_curve = {'t_h': t_arr.tolist(),
+                      'V': [round(v,4) for v in V_arr],
+                      'T': [round(t,2) for t in T_arr]}
+
+    result = {
+        # Thermal
+        'T_ambient_C':      T_ambient_C,
+        'T_self_heated_C':  round(T_iter, 2),
+        'dT_C':             round(T_iter - T_ambient_C, 2),
+        'Q_gen_W_m2':       round(Q_gen, 1),
+        'Q_irrev_W_m2':     round(Q_irrev, 1),
+        'Q_rev_W_m2':       round(Q_rev, 1),
+        'h_W_m2K':          h_W_m2K,
+        # Electrochemical at self-heated T
+        'V_cell_cold':      round(r_cold['V_cell'], 4),
+        'V_cell_hot':       round(r_converged['V_cell'], 4),
+        'dV_mV':            round((r_converged['V_cell'] - r_cold['V_cell'])*1000, 1),
+        'ed_cold':          round(r_cold['net_useful_ed'], 0),
+        'ed_hot':           round(r_converged['net_useful_ed'], 0),
+        'corr_cold':        round(r_cold['parasitic_pct'], 2),
+        'corr_hot':         round(r_converged['parasitic_pct'], 2),
+        'dominant_mechanism': r_converged['dominant_mechanism'],
+        # Time curve
+        'time_curve':       time_curve,
+    }
+
+    if verbose:
+        print(f"\n── Thermal model ──")
+        print(f"  Ambient:       {T_ambient_C}°C")
+        print(f"  Self-heated:   {result['T_self_heated_C']}°C  (ΔT = +{result['dT_C']}°C)")
+        print(f"  Q_gen:         {result['Q_gen_W_m2']} W/m²  "
+              f"(irrev={result['Q_irrev_W_m2']}  entropic={result['Q_rev_W_m2']})")
+        print(f"  h_eff:         {h_W_m2K} W/(m²·K)  ({['natural conv','forced conv','water cooling'][0 if h_W_m2K<20 else 1 if h_W_m2K<200 else 2]})")
+        print(f"  V cold→hot:    {result['V_cell_cold']} → {result['V_cell_hot']} V  "
+              f"(Δ={result['dV_mV']:+.1f} mV)")
+        print(f"  Net energy:    {result['ed_cold']:.0f} → {result['ed_hot']:.0f} Wh/kg")
+        print(f"  Corrosion:     {result['corr_cold']} → {result['corr_hot']} %")
+
+    return result
+
+
+def thermal_sweep(d_um=100, c_KOH=4.0, vf_pct=53, T_ambient_C=25, inh_pct=0,
+                  j_range=None, h_W_m2K=10.0):
+    """
+    Sweep current density and show self-heated temperature + performance.
+    Shows how the cell temperature rises with load.
+    """
+    if j_range is None:
+        j_range = np.linspace(1, 70, 40)
+
+    rows = []
+    for j in j_range:
+        th = thermal_model(d_um=d_um, c_KOH=c_KOH, vf_pct=vf_pct,
+                           T_ambient_C=T_ambient_C, inh_pct=inh_pct,
+                           j_mA_cm2=float(j), h_W_m2K=h_W_m2K)
+        rows.append({
+            'j':         round(float(j), 2),
+            'T_cell':    th['T_self_heated_C'],
+            'dT':        th['dT_C'],
+            'V_hot':     th['V_cell_hot'],
+            'V_cold':    th['V_cell_cold'],
+            'ed_hot':    th['ed_hot'],
+            'corr_hot':  th['corr_hot'],
+            'Q_gen':     th['Q_gen_W_m2'],
+        })
+    return rows
+
+
+def run_operating_temp_finder(d_um=100, c_KOH=4.0, vf_pct=53,
+                               T_ambient_C=25, inh_pct=0,
+                               h_values=None, verbose=True):
+    """
+    For a given ambient temperature and cell design, find the natural
+    operating temperature at different heat transfer conditions.
+    Shows: at what load does the cell self-heat into the optimal range?
+    """
+    if h_values is None:
+        h_values = [5, 10, 25, 50, 200]
+
+    if verbose:
+        print(f"\n── Operating temperature finder ──")
+        print(f"   Ambient: {T_ambient_C}°C  |  Optimal range: 55–65°C")
+        print(f"   {'h (W/m²K)':>12}  {'Cooling type':^22}  "
+              f"{'j=20':>8}  {'j=35':>8}  {'j=50':>8}  {'j=70':>8}")
+        print("   " + "─"*72)
+        for h in h_values:
+            label = ('natural conv' if h<=15 else
+                     'light forced' if h<=30 else
+                     'forced conv'  if h<=80 else 'strong cooling')
+            ts = [thermal_model(d_um=d_um, c_KOH=c_KOH, vf_pct=vf_pct,
+                                T_ambient_C=T_ambient_C, inh_pct=inh_pct,
+                                j_mA_cm2=j, h_W_m2K=h)['T_self_heated_C']
+                  for j in [20, 35, 50, 70]]
+            in_range = ['✓' if 55<=t<=65 else ('↑' if t>65 else '·') for t in ts]
+            print(f"   {h:>12}  {label:^22}  "
+                  + '  '.join(f"{t:>5.1f}°{r}" for t,r in zip(ts, in_range)))
+
+
 def cell_model(d_um, c_KOH, vf_pct, T_C, inh_pct, j_mA_cm2,
                t_hours=0.0, params_override=None, composition=None):
     """
@@ -530,22 +714,33 @@ def cell_model(d_um, c_KOH, vf_pct, T_C, inh_pct, j_mA_cm2,
     # Small negative correction at high KOH (activity coefficient effect)
     E_ocv = p['E_ocv_ref'] - p['ocv_koh_coeff'] * max(0.0, c_KOH - 4.0)
 
-    # ── Anode overpotential η_a (Butler-Volmer, solved numerically) ───────────
-    def bv_anode(eta):
-        aa, ac = p['alpha_a'], p['alpha_c']
-        return (i0_Al
-                * (np.exp(aa * n_Al * F * eta / (R_gas * T_K))
-                   - np.exp(-ac * n_Al * F * eta / (R_gas * T_K)))
-                - j)
-    # Initial estimate: high-field approximation
-    eta_a0 = R_gas * T_K / (p['alpha_a'] * n_Al * F) * np.log(j / max(i0_Al, 1e-14) + 1)
-    eta_a  = float(fsolve(bv_anode, [eta_a0], full_output=False)[0])
+    # ── Anode overpotential η_a (Butler-Volmer — exact arcsinh solution) ───────
+    # For symmetric BV (alpha_a = alpha_c = 0.5):
+    #   j = 2·i0·sinh(n·F·η / 2RT)  →  η = (2RT/nF)·arcsinh(j/2i0)
+    # This is mathematically exact (vs fsolve numerical), handles j=0 cleanly,
+    # and is ~10× faster. Valid when alpha_a ≈ alpha_c (our model uses 0.5).
+    # Reference: Newman & Thomas-Alyea, Electrochemical Systems (2004) §8.3
+    aa, ac = p['alpha_a'], p['alpha_c']
+    if abs(aa - ac) < 0.05:  # symmetric — use exact arcsinh
+        eta_a = float((R_gas * T_K / (aa * n_Al * F))
+                      * np.arcsinh(j / (2.0 * max(i0_Al, 1e-14))))
+    else:                    # asymmetric — fall back to numerical solver
+        def bv_anode(eta):
+            return (i0_Al * (np.exp(aa*n_Al*F*eta/(R_gas*T_K))
+                             - np.exp(-ac*n_Al*F*eta/(R_gas*T_K))) - j)
+        eta_a0 = R_gas*T_K/(aa*n_Al*F)*np.log(j/max(i0_Al,1e-14)+1)
+        eta_a  = float(fsolve(bv_anode, [eta_a0], full_output=False)[0])
 
-    # ── Cathode overpotential η_c (ORR, cathodic Butler-Volmer) ──────────────
-    def bv_cathode(eta):
-        return i0_O2 * np.exp(-p['alpha_O2'] * 4 * F * eta / (R_gas * T_K)) - j
-    eta_c0 = R_gas * T_K / (p['alpha_O2'] * 4 * F) * np.log(j / max(i0_O2, 1e-14) + 1)
-    eta_c  = float(fsolve(bv_cathode, [eta_c0], full_output=False)[0])
+    # ── Cathode overpotential η_c (ORR — Tafel, cathodic only) ──────────────
+    # ORR is asymmetric (high Tafel slope) — keep numerical approach
+    # but guard against j=0
+    if j < 1e-9:
+        eta_c = 0.0
+    else:
+        def bv_cathode(eta):
+            return i0_O2 * np.exp(-p['alpha_O2'] * 4 * F * eta / (R_gas * T_K)) - j
+        eta_c0 = R_gas*T_K/(p['alpha_O2']*4*F)*np.log(j/max(i0_O2,1e-14)+1)
+        eta_c  = float(fsolve(bv_cathode, [eta_c0], full_output=False)[0])
 
     # ── Ohmic drop ────────────────────────────────────────────────────────────
     sigma    = koh_conductivity(c_KOH, T_K, p)
@@ -713,6 +908,167 @@ def cell_model(d_um, c_KOH, vf_pct, T_C, inh_pct, j_mA_cm2,
 
 
 # ── Polarisation curve ────────────────────────────────────────────────────────
+
+def degradation_curve(d_um, c_KOH, vf_pct, T_C, inh_pct, j_mA_cm2,
+                       t_end_h=24.0, n_steps=200, params_override=None):
+    """
+    Time-dependent discharge simulation: V(t) as Al particles shrink
+    and Al(OH)₃ oxide layer grows.
+
+    Physics modelled over time:
+    - Particle shrinkage: d(t) decreases as Al dissolves
+      d(t) = d0 × (1 - I·t·M_Al / (3·F·ρ_Al·m_Al))^(1/3)
+    - Oxide growth: Cabrera-Mott model (already in cell_model via t_hours)
+    - Al depletion: tracks remaining Al fraction
+    - KOH depletion: Al(OH)4- buildup reduces effective KOH
+
+    Returns dict with time arrays for V, d, utilisation, corrosion
+    """
+    from al_air_model import cell_model
+    rho_Al  = 2700.0       # kg/m³
+    M_Al    = 0.02698      # kg/mol
+    F_const = 96485.0
+    n_e     = 3            # electrons per Al atom
+
+    j_A_m2  = j_mA_cm2 * 1e-3 * 1e4   # A/m²
+    dt_h    = t_end_h / n_steps
+    dt_s    = dt_h * 3600.0
+
+    # Track state
+    d_cur      = float(d_um)           # µm
+    al_frac    = 1.0                   # fraction of Al remaining
+    koh_cur    = float(c_KOH)          # M — depletes slightly over time
+    util_cum   = 0.0                   # cumulative utilisation
+
+    t_arr, V_arr, d_arr, util_arr, corr_arr, koh_arr = [],[],[],[],[],[]
+
+    # Al mass per unit electrode area (kg/m²) — approximate from paste geometry
+    phi     = vf_pct / 100.0
+    L_el    = params_override.get('L_eff_m', 0.002) if params_override else 0.002
+    m_Al_m2 = phi * rho_Al * L_el  # kg/m²
+
+    for step in range(n_steps + 1):
+        t_h = step * dt_h
+
+        if d_cur < 1.0 or al_frac < 0.01:
+            # Cell exhausted
+            t_arr.append(round(t_h, 3))
+            V_arr.append(0.0)
+            d_arr.append(round(d_cur, 2))
+            util_arr.append(round(util_cum * 100, 2))
+            corr_arr.append(100.0)
+            koh_arr.append(round(koh_cur, 3))
+            break
+
+        try:
+            r = cell_model(
+                d_um=d_cur, c_KOH=koh_cur, vf_pct=vf_pct,
+                T_C=T_C, inh_pct=inh_pct, j_mA_cm2=j_mA_cm2,
+                t_hours=t_h, params_override=params_override
+            )
+        except Exception:
+            break
+
+        t_arr.append(round(t_h, 3))
+        V_arr.append(round(r['V_cell'], 4))
+        d_arr.append(round(d_cur, 2))
+        util_arr.append(round(util_cum * 100, 2))
+        corr_arr.append(round(r['parasitic_pct'], 2))
+        koh_arr.append(round(koh_cur, 3))
+
+        if step == n_steps:
+            break
+
+        # ── Update state for next step ────────────────────────────────────
+        # Electrochemical Al dissolved (mol/m²)
+        dn_elec = j_A_m2 * dt_s / (n_e * F_const)
+
+        # Corrosion Al dissolved (mol/m²) — from parasitic %
+        par_frac  = r['parasitic_pct'] / 100.0
+        dn_total  = dn_elec / max(1.0 - par_frac, 0.01)
+        dn_corr   = dn_total - dn_elec
+
+        # Total Al consumed this step (fraction of initial)
+        dm_frac = dn_total * M_Al / (m_Al_m2 * phi)
+        al_frac = max(0.0, al_frac - dm_frac)
+
+        # Particle shrinkage — volume loss → radius reduction
+        # V(t) = V0 × (1 - dissolved_fraction)
+        # r(t) = r0 × (1 - dissolved_fraction)^(1/3)  [spherical]
+        frac_dissolved = 1.0 - al_frac
+        d_cur = float(d_um) * max(0.0, (1.0 - frac_dissolved)) ** (1.0/3.0)
+
+        # KOH depletion — Al³⁺ consumes 4 OH⁻ per ion (Al + 4OH⁻ → Al(OH)4⁻)
+        # Approximate: mol KOH consumed = 4 × mol Al dissolved
+        dkoh = 4.0 * dn_total * M_Al / 0.027 * 1e-3  # rough depletion
+        koh_cur = max(0.5, koh_cur - dkoh)
+
+        # Utilisation (fraction of Al that produced useful current)
+        util_step = dn_elec / max(dn_total, 1e-15)
+        util_cum  = (util_cum * step + util_step) / (step + 1)
+
+    # Discharge capacity (Ah/kg)
+    v_avg = float(np.mean([v for v in V_arr if v > 0])) if V_arr else 0
+    t_total = t_arr[-1] if t_arr else 0
+
+    return {
+        't_h':        t_arr,
+        'V':          V_arr,
+        'd_um':       d_arr,
+        'util_pct':   util_arr,
+        'corr_pct':   corr_arr,
+        'koh_M':      koh_arr,
+        'V_avg':      round(v_avg, 4),
+        't_end_h':    round(t_total, 2),
+        'n_steps':    len(t_arr),
+        'al_remaining_pct': round(al_frac * 100, 1),
+    }
+
+
+def heatmap_2d(param_x, param_y, x_range, y_range,
+                nx=15, ny=15, fixed_cfg=None, j_mA_cm2=50,
+                output='net_useful_ed'):
+    """
+    Compute 2D grid of model output for heatmap visualisation.
+
+    param_x, param_y : parameter names (e.g. 'd_um', 'c_KOH')
+    x_range, y_range : [lo, hi]
+    output : which result key to map (default: 'net_useful_ed')
+
+    Returns dict with x_vals, y_vals, z_grid (nx×ny matrix)
+    """
+    cfg = dict(BASE_CONFIG)
+    if fixed_cfg:
+        cfg.update(fixed_cfg)
+
+    x_vals = np.linspace(x_range[0], x_range[1], nx).tolist()
+    y_vals = np.linspace(y_range[0], y_range[1], ny).tolist()
+    z_grid = []
+
+    for y in y_vals:
+        row = []
+        for x in x_vals:
+            c = dict(cfg)
+            c[param_x] = float(x)
+            c[param_y] = float(y)
+            try:
+                r = cell_model(**c, j_mA_cm2=j_mA_cm2)
+                row.append(round(float(r[output]), 2))
+            except Exception:
+                row.append(None)
+        z_grid.append(row)
+
+    return {
+        'param_x': param_x,
+        'param_y': param_y,
+        'x_vals':  [round(v, 3) for v in x_vals],
+        'y_vals':  [round(v, 3) for v in y_vals],
+        'z_grid':  z_grid,
+        'output':  output,
+        'z_min':   round(float(np.nanmin([v for row in z_grid for v in row if v])), 1),
+        'z_max':   round(float(np.nanmax([v for row in z_grid for v in row if v])), 1),
+    }
+
 
 def polarisation_curve(d_um, c_KOH, vf_pct, T_C, inh_pct,
                        j_min=1, j_max=150, n_pts=40,

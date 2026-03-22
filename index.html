@@ -96,6 +96,9 @@ tbody td{padding:6px 10px;font-family:var(--mono)}
 .opt-row{display:grid;grid-template-columns:30px 90px 1fr 80px 80px 80px auto;gap:8px;padding:6px 10px;border-bottom:1px solid #111;align-items:center;font-family:var(--mono);font-size:11px}
 .opt-row:hover{background:var(--card)}
 .opt-head{font-size:9px;color:var(--txd);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--bdr)}
+label[title]{cursor:help;border-bottom:1px dotted var(--txd);}
+input[type=file]{background:var(--bg);border:1px dashed var(--bdr);border-radius:4px;color:var(--txd);font-family:var(--mono);font-size:11px;padding:8px;width:100%;cursor:pointer;}
+input[type=file]:hover{border-color:var(--g);color:var(--tx);}
 /* scrollbar */
 ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
 /* stack bar */
@@ -131,6 +134,9 @@ tbody td{padding:6px 10px;font-family:var(--mono)}
   <button class="nb" onclick="nav(this,'alloy')"><span class="ni">🧪</span> Alloy Builder</button>
   <button class="nb" onclick="nav(this,'optimizer')"><span class="ni">🏆</span> Optimizer</button>
   <button class="nb" onclick="nav(this,'atoms')"><span class="ni">⚛️</span> Atom DB</button>
+  <button class="nb" onclick="nav(this,'thermal')"><span class="ni">🌡️</span> Thermal Model</button>
+  <button class="nb" onclick="nav(this,'degradation')"><span class="ni">📉</span> Degradation</button>
+  <button class="nb" onclick="nav(this,'heatmap')"><span class="ni">🗺️</span> 2D Heatmap</button>
   <div class="nsec">Advanced</div>
   <button class="nb" onclick="nav(this,'joint')"><span class="ni">🔗</span> Joint Optimise</button>
   <button class="nb" onclick="nav(this,'tempmap')"><span class="ni">🌡️</span> Alloy vs Temp</button>
@@ -147,12 +153,12 @@ tbody td{padding:6px 10px;font-family:var(--mono)}
   <div class="sh"><span class="st">Baseline — live computation from al_air_model.py</span><div class="sl"></div></div>
 
   <div class="ctrl">
-    <div class="ctrl-row"><label>Particle d (µm)</label><input type="range" id="b-d" min="5" max="500" value="100" oninput="sv('bv-d',this.value+'µm');debRunBaseline()"><span class="vval" id="bv-d">100µm</span></div>
-    <div class="ctrl-row"><label>KOH (M)</label><input type="range" id="b-koh" min="15" max="80" value="35" oninput="sv('bv-koh',(this.value/10).toFixed(1)+'M');debRunBaseline()"><span class="vval" id="bv-koh">3.5M</span></div>
-    <div class="ctrl-row"><label>Al vol% in paste</label><input type="range" id="b-vf" min="15" max="65" value="53" oninput="sv('bv-vf',this.value+'%');debRunBaseline()"><span class="vval" id="bv-vf">53%</span></div>
-    <div class="ctrl-row"><label>Temperature (°C)</label><input type="range" id="b-T" min="10" max="75" value="60" oninput="sv('bv-T',this.value+'°C');debRunBaseline()"><span class="vval" id="bv-T">60°C</span></div>
-    <div class="ctrl-row"><label>Inhibitor (%)</label><input type="range" id="b-inh" min="0" max="100" value="0" oninput="sv('bv-inh',this.value+'%');debRunBaseline()"><span class="vval" id="bv-inh">0%</span></div>
-    <div class="ctrl-row"><label>Current density (mA/cm²)</label><input type="range" id="b-j" min="1" max="70" value="50" oninput="sv('bv-j',this.value);debRunBaseline()"><span class="vval" id="bv-j">50</span></div>
+    <div class="ctrl-row"><label title="Optimal range: 150–250 µm. Peak net energy at ~187 µm. Below 50 µm: corrosion catastrophic. Model valid 0.001–5000 µm.">Particle d (µm) ⓘ</label><input type="range" id="b-d" min="5" max="500" value="100" oninput="sv('bv-d',this.value+'µm');debRunBaseline()"><span class="vval" id="bv-d">100µm</span></div>
+    <div class="ctrl-row"><label title="Literature standard: 4M KOH. Optimum shifts with particle size — 3.2M at 100µm, 4.9M at 250µm. Above 6M: corrosion dominates.">KOH (M) ⓘ</label><input type="range" id="b-koh" min="15" max="80" value="40" oninput="sv('bv-koh',(this.value/10).toFixed(1)+'M');debRunBaseline()"><span class="vval" id="bv-koh">4.0M</span></div>
+    <div class="ctrl-row"><label title="Al volume fraction in paste. Higher = more energy but also more viscosity. Literature range: 40–60 vol%. Krieger-Dougherty viscosity model applied.">Al vol% in paste ⓘ</label><input type="range" id="b-vf" min="15" max="65" value="53" oninput="sv('bv-vf',this.value+'%');debRunBaseline()"><span class="vval" id="bv-vf">53%</span></div>
+    <div class="ctrl-row"><label title="Literature standard test: 25°C (ambient). Performance optimum: 60–65°C. Above 65°C: corrosion overtakes kinetics. Mg in alloy is counterproductive above ~55°C.">Temperature (°C) ⓘ</label><input type="range" id="b-T" min="10" max="75" value="25" oninput="sv('bv-T',this.value+'°C');debRunBaseline()"><span class="vval" id="bv-T">25°C</span></div>
+    <div class="ctrl-row"><label title="KOH-soluble corrosion inhibitor loading. Net energy saturates above 60% — adding more does not improve deliverable energy once utilisation reaches ~97%.">Inhibitor (%) ⓘ</label><input type="range" id="b-inh" min="0" max="100" value="0" oninput="sv('bv-inh',this.value+'%');debRunBaseline()"><span class="vval" id="bv-inh">0%</span></div>
+    <div class="ctrl-row"><label title="Regime crossover at ~28 mA/cm². Below: corrosion-dominated even with heavy inhibition. Above: kinetics become limiting factor. Practical range: 10–70 mA/cm².">Current density (mA/cm²) ⓘ</label><input type="range" id="b-j" min="1" max="70" value="50" oninput="sv('bv-j',this.value);debRunBaseline()"><span class="vval" id="bv-j">50</span></div>
   </div>
 
   <div class="crow" id="baseline-cards"></div>
@@ -274,6 +280,107 @@ tbody td{padding:6px 10px;font-family:var(--mono)}
   <tbody id="atom-tbody"></tbody></table>
 </div>
 
+<!-- ═══════════ DEGRADATION ═══════════ -->
+<div class="panel" id="panel-degradation">
+  <div class="sh"><span class="st">Degradation over time — V(t) as particles shrink + oxide grows</span><div class="sl"></div></div>
+  <div style="background:var(--card);border:1px solid var(--bdr);border-radius:5px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--txd);line-height:1.8">
+    Full BMS simulator: particle diameter shrinks as Al dissolves · oxide layer grows (Cabrera-Mott) · KOH depletes as Al(OH)₄⁻ builds up · voltage fades over hours.
+  </div>
+  <div class="ctrl" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">d (µm)</label><input type="number" id="dg-d" value="187" style="width:65px"></div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">KOH (M)</label><input type="number" id="dg-koh" value="4.0" step="0.5" style="width:65px"></div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">T (°C)</label><input type="number" id="dg-T" value="25" style="width:60px"></div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">j (mA/cm²)</label><input type="number" id="dg-j" value="50" style="width:65px"></div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Duration (h)</label><input type="number" id="dg-t" value="12" min="1" max="100" style="width:65px"></div>
+    <button class="btp" onclick="runDegradation()">▶ Simulate</button>
+    <span id="dg-status" class="loading"></span>
+  </div>
+  <div class="cg2 cols2" id="dg-charts" style="margin-top:14px;display:none">
+    <div class="cbox"><div class="ct">Cell voltage vs time — V(t)</div><canvas id="ch-dg-V" style="max-height:230px"></canvas></div>
+    <div class="cbox"><div class="ct">Particle diameter vs time — shrinkage</div><canvas id="ch-dg-d" style="max-height:230px"></canvas></div>
+  </div>
+  <div class="cg2 cols2" id="dg-charts2" style="margin-top:14px;display:none">
+    <div class="cbox"><div class="ct">Corrosion % vs time</div><canvas id="ch-dg-corr" style="max-height:210px"></canvas></div>
+    <div class="cbox"><div class="ct">KOH concentration vs time (depletion)</div><canvas id="ch-dg-koh" style="max-height:210px"></canvas></div>
+  </div>
+  <div id="dg-result" style="margin-top:10px"></div>
+</div>
+
+<!-- ═══════════ HEATMAP ═══════════ -->
+<div class="panel" id="panel-heatmap">
+  <div class="sh"><span class="st">2D heatmap — any two parameters vs output</span><div class="sl"></div></div>
+  <div class="ctrl" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">X axis</label>
+      <select id="hm-x" style="background:var(--bg);border:1px solid var(--bdr);color:var(--tx);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:3px">
+        <option value="d_um">Particle size (µm)</option>
+        <option value="c_KOH" selected>KOH (M)</option>
+        <option value="T_C">Temperature (°C)</option>
+        <option value="vf_pct">Al vol%</option>
+        <option value="inh_pct">Inhibitor %</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Y axis</label>
+      <select id="hm-y" style="background:var(--bg);border:1px solid var(--bdr);color:var(--tx);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:3px">
+        <option value="d_um" selected>Particle size (µm)</option>
+        <option value="c_KOH">KOH (M)</option>
+        <option value="T_C">Temperature (°C)</option>
+        <option value="vf_pct">Al vol%</option>
+        <option value="inh_pct">Inhibitor %</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Output</label>
+      <select id="hm-out" style="background:var(--bg);border:1px solid var(--bdr);color:var(--tx);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:3px">
+        <option value="net_useful_ed" selected>Net energy (Wh/kg)</option>
+        <option value="V_cell">Cell voltage (V)</option>
+        <option value="parasitic_pct">Corrosion (%)</option>
+        <option value="pd_W_kg_paste">Power density (W/kg)</option>
+        <option value="ed_Wh_kg_system">System energy (Wh/kg)</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">j (mA/cm²)</label><input type="number" id="hm-j" value="50" style="width:60px"></div>
+    <button class="btp" onclick="runHeatmap()">▶ Compute</button>
+    <span id="hm-status" class="loading"></span>
+  </div>
+  <div class="cbox" style="margin-top:14px;display:none" id="hm-box">
+    <div class="ct" id="hm-title">Heatmap</div>
+    <canvas id="ch-heatmap" style="max-height:420px"></canvas>
+    <div id="hm-info" style="margin-top:8px;font-size:10px;color:var(--txd)"></div>
+  </div>
+</div>
+
+<!-- ═══════════ THERMAL ═══════════ -->
+<div class="panel" id="panel-thermal">
+  <div class="sh"><span class="st">Thermal model — non-isothermal heat balance · self-heated operating temperature</span><div class="sl"></div></div>
+  <div style="background:var(--card);border:1px solid var(--bdr);border-radius:5px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--txd);line-height:1.8">
+    <strong style="color:var(--tx)">Q = j·(E<sub>rev</sub>−V)</strong> + <strong style="color:var(--tx)">j·T·dE/dT</strong> &nbsp;→&nbsp; T<sub>cell</sub> = T<sub>ambient</sub> + Q/h<br>
+    At j=50 mA/cm² with natural convection: cell self-heats <strong style="color:var(--g)">+29°C</strong> above ambient — no external heating needed to reach the performance optimum.
+  </div>
+  <div class="ctrl" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto" title="Starting ambient temperature. The model computes how much the cell heats above this under load.">T ambient (°C) ⓘ</label><input type="number" id="th-T" value="25" min="5" max="60" style="width:65px"></div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto" title="Heat transfer coefficient W/(m²·K). Natural convection ~10, small fan ~50, water cooling ~1000.">h (W/m²K) ⓘ</label>
+      <select id="th-h" style="background:var(--bg);border:1px solid var(--bdr);color:var(--tx);font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:3px">
+        <option value="5">5 — insulated</option>
+        <option value="10" selected>10 — natural conv</option>
+        <option value="25">25 — light fan</option>
+        <option value="50">50 — forced conv</option>
+        <option value="200">200 — strong cooling</option>
+      </select>
+    </div>
+    <button class="btp" onclick="runThermal()">▶ Run thermal sweep</button>
+    <button class="btp" style="background:#0a1e2e;border-color:#38bdf8;color:var(--b)" onclick="runOptFinder()">▶ Find operating temp</button>
+    <span id="th-status" class="loading"></span>
+  </div>
+  <div class="cg2 cols2" id="th-charts" style="margin-top:14px;display:none">
+    <div class="cbox"><div class="ct">Self-heated cell temperature vs current density</div><canvas id="ch-th-T" style="max-height:230px"></canvas></div>
+    <div class="cbox"><div class="ct">Net energy — isothermal (25°C) vs self-heated</div><canvas id="ch-th-ed" style="max-height:230px"></canvas></div>
+  </div>
+  <div class="cg2 cols2" id="th-charts2" style="margin-top:14px;display:none">
+    <div class="cbox"><div class="ct">Heat generation (W/m²) vs current</div><canvas id="ch-th-Q" style="max-height:210px"></canvas></div>
+    <div class="cbox"><div class="ct">Voltage — isothermal vs self-heated</div><canvas id="ch-th-V" style="max-height:210px"></canvas></div>
+  </div>
+  <div id="th-optfinder" style="margin-top:14px"></div>
+</div>
+
 <!-- ═══════════ JOINT OPTIMISE ═══════════ -->
 <div class="panel" id="panel-joint">
   <div class="sh"><span class="st">Joint optimisation — paste conditions + alloy composition simultaneously (7D)</span><div class="sl"></div></div>
@@ -350,7 +457,9 @@ tbody td{padding:6px 10px;font-family:var(--mono)}
   <div style="display:grid;grid-template-columns:280px 1fr;gap:16px">
     <div>
       <div class="ctrl">
-        <div style="font-size:10px;color:var(--txd);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Paste measurements (j_mA/cm², V)</div>
+        <div style="font-size:10px;color:var(--txd);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Upload CSV or paste data (j_mA/cm², V)</div>
+        <input type="file" id="cal-file" accept=".csv,.txt" onchange="loadCalibFile(this)" style="margin-bottom:6px">
+        <div style="text-align:center;font-size:10px;color:var(--txd);margin:4px 0">— or paste manually —</div>
         <textarea id="cal-input" placeholder="2.0, 1.32&#10;5.0, 1.25&#10;10.0, 1.18&#10;25.0, 1.05&#10;50.0, 0.92"></textarea>
         <div style="display:flex;gap:8px;margin-top:8px">
           <button class="btp" onclick="runCalibrate()">▶ Calibrate</button>
@@ -761,6 +870,16 @@ async function loadAtoms(){
 
 // ── CALIBRATE ─────────────────────────────────────────────────────────────────
 let calChart=null;
+function loadCalibFile(input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    document.getElementById('cal-input').value=e.target.result.trim();
+  };
+  reader.readAsText(file);
+}
+
 function loadCalibExample(){
   document.getElementById('cal-input').value='2.0, 1.235\n5.0, 1.202\n10.0, 1.176\n25.0, 1.138\n50.0, 1.105';
   runCalibrate();
@@ -941,6 +1060,240 @@ async function runCurrentMap(){
       <span style="color:${p.synergy?'var(--g)':'var(--txd)'}">${p.synergy?'✓':'—'}</span>
       <span style="font-size:10px;color:var(--txd)">${strat}</span>
     </div>`;}).join('');
+}
+
+// ── DEGRADATION ───────────────────────────────────────────────────────────────
+async function runDegradation(){
+  const status=document.getElementById('dg-status');
+  status.innerHTML='<span class="spin"></span> Simulating...';
+  const resp=await api('/api/degradation',{
+    d_um:   parseFloat(document.getElementById('dg-d').value),
+    c_KOH:  parseFloat(document.getElementById('dg-koh').value),
+    T_C:    parseFloat(document.getElementById('dg-T').value),
+    j:      parseFloat(document.getElementById('dg-j').value),
+    t_end_h:parseFloat(document.getElementById('dg-t').value),
+    n_steps:120, vf_pct:53, inh_pct:0,
+  });
+  if(!resp.ok){status.textContent='Error: '+resp.error.slice(0,60);return}
+  const d=resp.data;
+  status.textContent=`✓ ${d.n_steps} steps · V_avg=${d.V_avg}V · Al remaining=${d.al_remaining_pct}%`;
+  document.getElementById('dg-charts').style.display='grid';
+  document.getElementById('dg-charts2').style.display='grid';
+
+  const mkLine=(id,data,color,yLabel,yMin)=>mkChart(id,{type:'line',
+    data:{datasets:[{label:yLabel,data:d.t_h.map((t,i)=>({x:t,y:data[i]})),
+      borderColor:color,pointRadius:0,borderWidth:2,fill:false,tension:0.3}]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'Time (hours)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:yLabel},grid:{color:'#1e2a1e'},...(yMin!==undefined?{min:yMin}:{})}},
+      plugins:{legend:{display:false}}}});
+
+  mkLine('ch-dg-V',    d.V,       C.g, 'V cell (V)',    0.5);
+  mkLine('ch-dg-d',    d.d_um,    C.b, 'Particle d (µm)', 0);
+  mkLine('ch-dg-corr', d.corr_pct,C.o, 'Corrosion (%)', 0);
+  mkLine('ch-dg-koh',  d.koh_M,   C.y, 'KOH (M)',       0);
+
+  document.getElementById('dg-result').innerHTML=`
+    <div class="rbox" style="display:flex;gap:24px;flex-wrap:wrap">
+      <div class="rrow" style="border:none"><span class="rk">Avg voltage</span><span class="rv" style="color:var(--g)">${d.V_avg} V</span></div>
+      <div class="rrow" style="border:none"><span class="rk">Duration</span><span class="rv">${d.t_end_h} h</span></div>
+      <div class="rrow" style="border:none"><span class="rk">Al remaining</span><span class="rv" style="color:${d.al_remaining_pct>50?'var(--g)':'var(--o)'}">${d.al_remaining_pct}%</span></div>
+    </div>`;
+}
+
+// ── HEATMAP ───────────────────────────────────────────────────────────────────
+const HM_RANGES={d_um:[5,400],c_KOH:[1.5,8],T_C:[15,75],vf_pct:[20,65],inh_pct:[0,80]};
+let hmChart=null;
+
+async function runHeatmap(){
+  const status=document.getElementById('hm-status');
+  status.innerHTML='<span class="spin"></span> Computing grid...';
+  const px=document.getElementById('hm-x').value;
+  const py=document.getElementById('hm-y').value;
+  if(px===py){status.textContent='X and Y must be different';return}
+  const out=document.getElementById('hm-out').value;
+  const outLabel={'net_useful_ed':'Net energy (Wh/kg)','V_cell':'Voltage (V)',
+    'parasitic_pct':'Corrosion (%)','pd_W_kg_paste':'Power (W/kg)',
+    'ed_Wh_kg_system':'System energy (Wh/kg)'}[out]||out;
+
+  const resp=await api('/api/heatmap',{
+    param_x:px, param_y:py,
+    x_range:HM_RANGES[px]||[0,100],
+    y_range:HM_RANGES[py]||[0,100],
+    nx:18, ny:15,
+    j:parseFloat(document.getElementById('hm-j').value),
+    output:out,
+  });
+  if(!resp.ok){status.textContent='Error';return}
+  const d=resp.data;
+  status.textContent=`✓ ${d.x_vals.length}×${d.y_vals.length} grid`;
+
+  document.getElementById('hm-box').style.display='block';
+  const xLabel={d_um:'Particle size (µm)',c_KOH:'KOH (M)',T_C:'Temperature (°C)',
+    vf_pct:'Al vol%',inh_pct:'Inhibitor %'}[px]||px;
+  const yLabel={d_um:'Particle size (µm)',c_KOH:'KOH (M)',T_C:'Temperature (°C)',
+    vf_pct:'Al vol%',inh_pct:'Inhibitor %'}[py]||py;
+  document.getElementById('hm-title').textContent=`${outLabel} — ${xLabel} vs ${yLabel}`;
+  document.getElementById('hm-info').textContent=
+    `Range: ${d.z_min} – ${d.z_max} ${outLabel.split('(')[1]?.replace(')','')??''}  |  Peak shown in yellow-green`;
+
+  // Build scatter dataset from grid
+  const datasets=[];
+  const zMin=d.z_min, zRange=d.z_max-d.z_min;
+  const pts=[];
+  d.y_vals.forEach((y,yi)=>{
+    d.x_vals.forEach((x,xi)=>{
+      const z=d.z_grid[yi][xi];
+      if(z!==null){
+        const t=(z-zMin)/Math.max(zRange,1);
+        pts.push({
+          x,y,
+          v:z,
+          bg:`rgba(${Math.round(56+t*199)},${Math.round(189+t*93)},${Math.round(248-t*168)},0.85)`
+        });
+      }
+    });
+  });
+  if(hmChart){hmChart.destroy();}
+  const ctx=document.getElementById('ch-heatmap');
+  hmChart=new Chart(ctx,{type:'scatter',
+    data:{datasets:[{
+      label:outLabel,
+      data:pts.map(p=>({x:p.x,y:p.y})),
+      backgroundColor:pts.map(p=>p.bg),
+      pointRadius:pts.length<100?12:8,
+      borderWidth:0,
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,parsing:false,
+      scales:{
+        x:{type:'linear',title:{display:true,text:xLabel},grid:{color:'#1e2a1e'}},
+        y:{title:{display:true,text:yLabel},grid:{color:'#1e2a1e'}}
+      },
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:p=>{
+          const pt=pts[p.dataIndex];
+          return `${outLabel}: ${pt.v}  |  ${xLabel}=${pt.x}  ${yLabel}=${pt.y}`;
+        }}}
+      }
+    }
+  });
+}
+
+// ── THERMAL MODEL ─────────────────────────────────────────────────────────────
+async function runThermal(){
+  const status=document.getElementById('th-status');
+  status.innerHTML='<span class="spin"></span> Computing heat balance...';
+  const T=parseFloat(document.getElementById('th-T').value);
+  const h=parseFloat(document.getElementById('th-h').value);
+  const resp=await api('/api/thermal/sweep',{T_ambient:T,h_W_m2K:h,
+    d_um:100,c_KOH:4.0,vf_pct:53,inh_pct:0});
+  if(!resp.ok){status.textContent='Error';return}
+  const pts=resp.data;
+  status.textContent=`✓ T_ambient=${T}°C → T_cell max ${Math.max(...pts.map(p=>p.T_cell)).toFixed(1)}°C`;
+  document.getElementById('th-charts').style.display='grid';
+  document.getElementById('th-charts2').style.display='grid';
+
+  const optLo=55, optHi=65;
+
+  mkChart('ch-th-T',{type:'line',
+    data:{datasets:[
+      {label:'T cell (self-heated)',data:pts.map(p=>({x:p.j,y:p.T_cell})),
+       borderColor:C.r,backgroundColor:C.r+'18',fill:true,pointRadius:3,
+       pointBackgroundColor:pts.map(p=>p.T_cell>=optLo&&p.T_cell<=optHi?C.g:C.r),
+       borderWidth:2,tension:0.3},
+      {label:'T ambient',data:pts.map(p=>({x:p.j,y:T})),
+       borderColor:C.b,borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false,tension:0},
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'j (mA/cm²)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'Temperature (°C)'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:true,labels:{boxWidth:8}},
+        annotation:{annotations:{
+          optBox:{type:'box',yMin:optLo,yMax:optHi,backgroundColor:'#4ade8010',
+                  borderColor:'#4ade8040',borderWidth:1,
+                  label:{display:true,content:'optimal range',color:'#4ade8088',font:{size:9}}}
+        }}
+      }
+    }
+  });
+
+  // Get isothermal reference at ambient T
+  const respIso=await api('/api/sweep',{param:'j_mA_cm2'||'c_KOH',
+    d_um:100,c_KOH:4.0,vf_pct:53,T_C:T,inh_pct:0,
+    lo:1,hi:70,n:40,j:50,param:'vf_pct'});
+  // Use polarisation endpoint for isothermal comparison
+  const respPol=await api('/api/polarisation',{d_um:100,c_KOH:4.0,vf_pct:53,T_C:T,inh_pct:0});
+  const polPts=respPol.data||[];
+
+  mkChart('ch-th-ed',{type:'line',
+    data:{datasets:[
+      {label:'Self-heated',data:pts.map(p=>({x:p.j,y:p.ed_hot})),
+       borderColor:C.g,pointRadius:0,borderWidth:2,fill:false,tension:0.3},
+      {label:`Isothermal (${T}°C)`,data:polPts.map(p=>({x:p.j,y:p.ed})),
+       borderColor:C.b,pointRadius:0,borderWidth:1.5,fill:false,tension:0.3,borderDash:[4,2]},
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'j (mA/cm²)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'Net energy (Wh/kg)'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:true,labels:{boxWidth:8}}}}});
+
+  mkChart('ch-th-Q',{type:'line',
+    data:{datasets:[
+      {label:'Q total',data:pts.map(p=>({x:p.j,y:p.Q_gen})),
+       borderColor:C.o,backgroundColor:C.o+'18',fill:true,pointRadius:0,borderWidth:2,tension:0.3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'j (mA/cm²)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'Heat (W/m²)'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:false}}}});
+
+  mkChart('ch-th-V',{type:'line',
+    data:{datasets:[
+      {label:'V self-heated',data:pts.map(p=>({x:p.j,y:p.V_hot})),
+       borderColor:C.g,pointRadius:0,borderWidth:2,fill:false,tension:0.3},
+      {label:`V isothermal (${T}°C)`,data:polPts.map(p=>({x:p.j,y:p.V})),
+       borderColor:C.b,pointRadius:0,borderWidth:1.5,fill:false,tension:0.3,borderDash:[4,2]},
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'j (mA/cm²)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'V cell (V)'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:true,labels:{boxWidth:8}}}}});
+}
+
+async function runOptFinder(){
+  const status=document.getElementById('th-status');
+  status.innerHTML='<span class="spin"></span> Finding operating temperatures...';
+  const T=parseFloat(document.getElementById('th-T').value);
+  const resp=await api('/api/thermal/optfinder',{T_ambient:T,
+    d_um:100,c_KOH:4.0,vf_pct:53,inh_pct:0,
+    h_values:[5,10,25,50,200]});
+  if(!resp.ok){status.textContent='Error';return}
+  const data=resp.data;
+  status.textContent=`✓ ${data.length} cooling scenarios`;
+  document.getElementById('th-charts').style.display='none';
+  document.getElementById('th-charts2').style.display='none';
+
+  const el=document.getElementById('th-optfinder');
+  el.innerHTML=`<div class="sh"><span class="st">Operating temperature — ambient ${T}°C · green = in optimal range (55–65°C)</span><div class="sl"></div></div>
+  <div style="overflow-x:auto">
+  <table style="width:100%;min-width:600px">
+  <thead><tr>
+    <th>h (W/m²K)</th><th>Cooling type</th>
+    ${data[0].points.map(p=>`<th>j=${p.j}</th>`).join('')}
+  </tr></thead><tbody>
+  ${data.map(row=>`<tr>
+    <td style="color:var(--y)">${row.h}</td>
+    <td style="color:var(--txd);font-size:10px">${row.label}</td>
+    ${row.points.map(p=>`<td style="color:${p.in_opt_range?'var(--g)':p.T_cell>65?'var(--r)':'var(--txd)'};font-weight:${p.in_opt_range?600:400}">
+      ${p.T_cell.toFixed(1)}°C
+    </td>`).join('')}
+  </tr>`).join('')}
+  </tbody></table></div>
+  <div style="margin-top:10px;font-size:11px;color:var(--txd)">
+    <span style="color:var(--g)">Green</span> = cell in optimal range (55–65°C) at that load condition.
+    With natural convection (h=10), cells self-heat into the optimal range at j≈35–50 mA/cm².
+  </div>`;
 }
 
 // ── CSV EXPORT ────────────────────────────────────────────────────────────────

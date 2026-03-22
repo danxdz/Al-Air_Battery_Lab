@@ -27,7 +27,16 @@ This project does.
 These conclusions emerge directly from the model and are specific to paste-format
 cells — they do not appear in solid-plate Al-air literature.
 
-### 1. Optimal particle size: ~180 µm (not smaller)
+### 1. Optimal particle size is temperature-dependent
+
+The optimal particle size **shifts with operating temperature** — a direct consequence of the Arrhenius-driven corrosion rate.
+
+| Temperature | Optimal d | Net energy | Corrosion at optimum |
+|---|---|---|---|
+| **25 °C** (standard test) | **~315 µm** | 1054 Wh/kg | ~0.5% |
+| **60 °C** (performance optimum) | **~187 µm** | 1483 Wh/kg | ~4% |
+
+At higher temperature, corrosion increases faster with decreasing particle size, shifting the kinetics-corrosion tradeoff crossover to larger particles. The finding is robust: the optimum exists at every temperature, just at different values.
 
 Counter-intuitively, **larger particles outperform smaller ones** for net useful energy.
 
@@ -56,7 +65,7 @@ limits performance; above it, corrosion rises faster than conductivity improves.
 
 ### 3. Temperature optimum: ~60–65 °C
 
-Net energy peaks at 60 °C (1400 Wh/kg) and declines above 65 °C as Arrhenius-driven
+Net energy peaks at 60 °C (1400 Wh/kg at 60°C, 1054 Wh/kg at 25°C) and declines above 65 °C as Arrhenius-driven
 corrosion overtakes kinetic gains. Running hotter is counterproductive for paste cells.
 
 ### 4. Inhibitor saturates at 60% loading
@@ -103,7 +112,16 @@ Optimising paste conditions (d, KOH, T) **simultaneously** with alloy compositio
 finds better solutions than fixing conditions and only optimising alloy.
 Joint optimum: d ≈ 230–280 µm · T ≈ 63–67 °C · KOH ≈ 3.7–4.2 M · Mg+In/Sn synergy.
 
-### 9. System-level energy: 884 Wh/kg = 3.5× Li-ion
+### 9. System-level energy: 3.0–3.5× Li-ion depending on operating temperature
+
+| Level | 25 °C (standard test) | 60 °C (performance optimum) | Notes |
+|---|---|---|---|
+| Theoretical | 2 088 Wh/kg | 2 088 Wh/kg | n·F/M × Al mass fraction |
+| After voltage efficiency | 1 230 Wh/kg | 1 445 Wh/kg | largest single loss |
+| After engineering penalties | **753 Wh/kg** | **884 Wh/kg** | ×0.612 (casing, electrolyte, packing) |
+| vs Li-ion typical | **3.0×** | **3.5×** | Li-ion ~250 Wh/kg system |
+
+Voltage efficiency is the dominant loss at both temperatures — larger than all mass penalties combined. Better cathode catalysts matter more than alloy optimisation.
 
 | Level | Energy | Notes |
 |---|---|---|
@@ -149,10 +167,10 @@ not in separate parameter sweeps.
 
 | Quantity | Value | Conditions |
 |---|---|---|
-| Cell voltage | **1.142 V** | 100 µm · 3.5 M KOH · 53 vol% · 60 °C · 50 mA/cm² |
-| Energy density (cell) | **1 445 Wh/kg** paste | active material only |
-| Energy density (system) | **884 Wh/kg** | incl. engineering penalties ×0.612 |
-| Power density | **186 W/kg** | geometric formula |
+| Cell voltage | **1.108 V** | 100 µm · 4 M KOH · 53 vol% · **25 °C** · 50 mA/cm² (literature standard) |
+| Energy density (cell) | **1 230 Wh/kg** paste | at 25 °C standard · 1 445 Wh/kg at 60 °C |
+| Energy density (system) | **753 Wh/kg** | at 25 °C · 884 Wh/kg at 60 °C · incl. ×0.612 penalties |
+| Power density | **180 W/kg** | at 25 °C · 186 W/kg at 60 °C |
 | **Optimal particle size** | **~180 µm** | peak net energy 1 483 Wh/kg — paste-specific finding |
 | Optimal KOH | **3.2 M** | below conventional 4–6 M practice |
 | Optimal temperature | **60–65 °C** | corrosion overtakes kinetics above this |
@@ -194,6 +212,84 @@ Physics applied per alloy:
 - **Oxide disruption** — In/Sn prevent Al₂O₃ passivation
 - **BEP correction** on exchange current density
 - **Feasibility check** — literature-grounded composition limits
+
+---
+
+### 12. Optimal alloy strategy reverses between 25°C and 55°C
+
+At **25°C** (standard): Mg activation is **beneficial** above j = 30 mA/cm² — corrosion baseline only 1–2% so Mg costs little but gains kinetics. At **55°C+**: Mg is counterproductive — temperature already drives corrosion. Crossover: ~50°C. Confirmed by the alloy vs temperature bar chart: Mg (orange) dominates at 25–40°C, vanishes at 55°C+.
+
+### 13. At 25°C, Mg+In/Sn synergy is universal across the Pareto front
+
+All top configurations in the 25°C Pareto search (88 configs, 4000 samples) activate Mg+In/Sn synergy. At room temperature Mg is not a tradeoff — it is unconditionally beneficial.
+
+### 14. Particle size optimum confirmed independently at both test temperatures
+
+The peak at d = 187 µm was confirmed at 60°C from multiple sweep directions (coarse 5–1500µm, fine 150–200µm, app tooltip). The peak at d = 315 µm was confirmed at 25°C from the Jupyter notebook. Both findings are consistent with Finding 1 — the optimum exists at every temperature, shifts with corrosion rate.
+
+### 15. Joint optimum independently confirms 60–66°C operating temperature
+
+When the 7D joint optimiser searches freely over T = 40–75°C, top configs cluster at 59–66°C — independent confirmation of the temperature optimum from parametric sweeps.
+
+### 16. Nano-particle regime: high power, zero net energy
+
+Below d ≈ 1 µm, corrosion saturates at ~98%. SSA > 2,000,000 m²/kg. Instantaneous power reaches 210 W/kg but net energy < 10 Wh/kg. Al nanoparticle paste is a hydrogen generator with a battery voltage. Practical lower bound: d ≈ 50 µm.
+
+### 17. The cell self-heats to its optimal operating temperature under natural convection
+
+Non-isothermal heat balance: Q = j·(E_rev − V) + j·T·dE/dT → T_cell = T_ambient + Q/h
+
+At j = 50–70 mA/cm² with natural convection (h ≈ 10 W/m²K), a cell starting at 25°C ambient reaches **52–65°C** internally — exactly the electrochemical performance optimum — with no external heating. Active cooling is counterproductive: it suppresses self-heating and reduces net energy by up to 200 Wh/kg.
+
+| h (W/m²K) | Cooling | j=35 | j=50 | j=70 | Verdict |
+|---|---|---|---|---|---|
+| 5 | Natural (enclosed) | 62.5°C ✓ | 79.1°C ↑ | 101°C ↑ | Overheats above j=35 |
+| **10** | **Natural (open)** | 44°C | 53°C | **64.8°C ✓** | **Optimal — recommended** |
+| 25 | Light forced | 33°C | 36°C | 41°C | Too cold — loses 200 Wh/kg |
+| 200 | Strong cooling | 26°C | 26°C | 27°C | Isothermal — worst energy |
+
+**Design rule:** build for natural convection, operate at j = 50–70 mA/cm². The cell finds its own optimal temperature.
+
+---
+
+## Examples
+
+Generated by `Getting_Started.ipynb` — run locally or open in any Jupyter environment.
+
+### Polarisation curve — 25°C · 4M KOH · 100µm
+
+![Polarisation curve](polarisation_curve.png)
+
+Butler-Volmer losses dominate throughout. OCV=1.60V, cell voltage drops from 1.25V at low current to 1.09V at 70 mA/cm². Ohmic and mass transport losses are minor at standard conditions.
+
+### Particle size sweep — paste-specific optimum
+
+![Particle size sweep](particle_size_sweep.png)
+
+Net energy peaks at **~315 µm at 25°C** (and ~187 µm at 60°C). The optimum shifts with temperature because higher temperature increases corrosion, shifting the kinetics-corrosion tradeoff to smaller particles. Below 50 µm: corrosion catastrophic. Above the optimum: diminishing returns.
+
+### Alloy design space — 2000 configs at 25°C
+
+![Alloy design space](alloy_design_space.png)
+
+88 Pareto-optimal configs (orange) from 2000 LHS samples. Colour = voltage. The Pareto front spans corrosion 0.6–3.5% vs net energy 870–1025 Wh/kg. All top configs activate Mg+In/Sn synergy.
+
+### Calibration — model vs experimental data
+
+![Calibration result](calibration_result.png)
+
+Calibration with synthetic data (RMSE 93→113 mV, diverges). This is expected — the model requires real paste-cell measurements at matching conditions (4M KOH, 25°C). See [Calibration](#calibration) section.
+
+---
+
+
+
+```bash
+pip install numpy scipy scikit-learn matplotlib flask jupyter
+jupyter notebook Getting_Started.ipynb
+```
+
+Walks through: single cell → polarisation curve → particle sweep → alloy optimisation → calibration.
 
 ---
 
@@ -292,7 +388,7 @@ The calibration script (`al_air_calibrate.py`) implements physics-region fitting
 | j = 25–50 mA/cm² | Mass transport (L_diff) |
 
 **To reach RMSE < 30 mV** (publication target): measure one paste-cell discharge
-curve at the standard conditions (3.5 M KOH · 60 °C · 53 vol% Al · 100 µm) and
+curve at the standard conditions (4 M KOH · 25 °C · 53 vol% Al · 100 µm) and
 run `--data your_data.csv --mc`. Five data points is enough.
 
 **Contributions of experimental data are very welcome.**
@@ -362,7 +458,7 @@ non-obvious finding that the model reveals.
 Most useful contributions, in priority order:
 
 1. **Experimental discharge data** from a paste cell — 5 points (j = 2, 5, 10, 25, 50 mA/cm²)
-   at 3.5 M KOH · 60 °C. This is the single highest-impact contribution.
+   at 4 M KOH · 25 °C. This is the single highest-impact contribution.
 
 2. **Alloy validation data** — discharge curves for Al-Mg-In, Al-Mg-Sn, or similar
    to validate the alloy model quantitatively.

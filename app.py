@@ -21,6 +21,8 @@ from al_air_model import (
     COMPOSITION_LIMITS, MAX_TOTAL_ADDITIVE,
     check_feasibility, polarisation_curve,
     fit_parameters, compute_rmse,
+    thermal_model, thermal_sweep, run_operating_temp_finder,
+    degradation_curve, heatmap_2d,
 )
 from al_air_alloy  import (binary_sweep, optimize_alloy,
                             optimize_joint, temperature_alloy_map,
@@ -362,6 +364,142 @@ def api_atoms():
             "note":     a["note"],
         })
     return ok(rows)
+
+
+# ── API: degradation / time-stepping ─────────────────────────────────────────
+
+@app.route("/api/degradation", methods=["POST"])
+def api_degradation():
+    """Time-dependent discharge: V(t) as particles shrink and oxide grows."""
+    try:
+        body = request.get_json(force=True) or {}
+        d    = float(body.get("d_um",      BASE_CONFIG["d_um"]))
+        c    = float(body.get("c_KOH",     BASE_CONFIG["c_KOH"]))
+        vf   = float(body.get("vf_pct",    BASE_CONFIG["vf_pct"]))
+        T    = float(body.get("T_C",       BASE_CONFIG["T_C"]))
+        inh  = float(body.get("inh_pct",   BASE_CONFIG["inh_pct"]))
+        j    = float(body.get("j",         50))
+        t_end= float(body.get("t_end_h",   24))
+        n    = int(body.get("n_steps",     120))
+
+        result = degradation_curve(
+            d_um=d, c_KOH=c, vf_pct=vf, T_C=T,
+            inh_pct=inh, j_mA_cm2=j,
+            t_end_h=t_end, n_steps=n
+        )
+        return ok(npsafe(result))
+    except Exception as e:
+        return err(traceback.format_exc())
+
+
+# ── API: 2D heatmap ───────────────────────────────────────────────────────────
+
+@app.route("/api/heatmap", methods=["POST"])
+def api_heatmap():
+    """Compute 2D grid for heatmap: param_x vs param_y → output."""
+    try:
+        body     = request.get_json(force=True) or {}
+        param_x  = body.get("param_x", "d_um")
+        param_y  = body.get("param_y", "c_KOH")
+        x_range  = body.get("x_range", [5,   300])
+        y_range  = body.get("y_range", [1.5, 8.0])
+        nx       = int(body.get("nx", 18))
+        ny       = int(body.get("ny", 15))
+        j        = float(body.get("j", 50))
+        output   = body.get("output", "net_useful_ed")
+        fixed    = {k: float(v) for k, v in body.get("fixed", {}).items()}
+
+        result = heatmap_2d(
+            param_x=param_x, param_y=param_y,
+            x_range=x_range, y_range=y_range,
+            nx=nx, ny=ny, j_mA_cm2=j,
+            fixed_cfg=fixed, output=output
+        )
+        return ok(npsafe(result))
+    except Exception as e:
+        return err(traceback.format_exc())
+
+
+# ── API: thermal model ────────────────────────────────────────────────────────
+
+@app.route("/api/thermal", methods=["POST"])
+def api_thermal():
+    """Non-isothermal heat balance — self-heated operating temperature."""
+    try:
+        body = request.get_json(force=True) or {}
+        d    = float(body.get("d_um",      BASE_CONFIG["d_um"]))
+        c    = float(body.get("c_KOH",     BASE_CONFIG["c_KOH"]))
+        vf   = float(body.get("vf_pct",    BASE_CONFIG["vf_pct"]))
+        T    = float(body.get("T_ambient", 25))
+        inh  = float(body.get("inh_pct",   BASE_CONFIG["inh_pct"]))
+        j    = float(body.get("j", 50))
+        h    = float(body.get("h_W_m2K", 10))
+        t_h  = body.get("t_hours", None)
+        if t_h is not None:
+            t_h = float(t_h)
+
+        result = thermal_model(d_um=d, c_KOH=c, vf_pct=vf,
+                               T_ambient_C=T, inh_pct=inh,
+                               j_mA_cm2=j, h_W_m2K=h,
+                               t_hours=t_h, verbose=True)
+        return ok(npsafe(result))
+    except Exception as e:
+        return err(traceback.format_exc())
+
+
+@app.route("/api/thermal/sweep", methods=["POST"])
+def api_thermal_sweep():
+    """Sweep j and show self-heated T + performance at each point."""
+    try:
+        body = request.get_json(force=True) or {}
+        d    = float(body.get("d_um",      BASE_CONFIG["d_um"]))
+        c    = float(body.get("c_KOH",     BASE_CONFIG["c_KOH"]))
+        vf   = float(body.get("vf_pct",    BASE_CONFIG["vf_pct"]))
+        T    = float(body.get("T_ambient", 25))
+        inh  = float(body.get("inh_pct",   BASE_CONFIG["inh_pct"]))
+        h    = float(body.get("h_W_m2K",   10))
+
+        rows = thermal_sweep(d_um=d, c_KOH=c, vf_pct=vf,
+                              T_ambient_C=T, inh_pct=inh, h_W_m2K=h)
+        return ok(npsafe(rows))
+    except Exception as e:
+        return err(traceback.format_exc())
+
+
+@app.route("/api/thermal/optfinder", methods=["POST"])
+def api_thermal_optfinder():
+    """Find natural operating temperature across h values."""
+    try:
+        body = request.get_json(force=True) or {}
+        d    = float(body.get("d_um",      BASE_CONFIG["d_um"]))
+        c    = float(body.get("c_KOH",     BASE_CONFIG["c_KOH"]))
+        vf   = float(body.get("vf_pct",    BASE_CONFIG["vf_pct"]))
+        T    = float(body.get("T_ambient", 25))
+        inh  = float(body.get("inh_pct",   BASE_CONFIG["inh_pct"]))
+        h_vals = body.get("h_values", [5, 10, 25, 50, 200])
+
+        results = []
+        for h in h_vals:
+            label = ('Natural conv' if h<=15 else
+                     'Light forced' if h<=30 else
+                     'Forced conv'  if h<=80 else 'Strong cooling')
+            pts = []
+            for j in [10, 20, 35, 50, 70]:
+                th = thermal_model(d_um=d, c_KOH=c, vf_pct=vf,
+                                   T_ambient_C=T, inh_pct=inh,
+                                   j_mA_cm2=j, h_W_m2K=h)
+                pts.append({
+                    'j':      j,
+                    'T_cell': th['T_self_heated_C'],
+                    'dT':     th['dT_C'],
+                    'V':      th['V_cell_hot'],
+                    'ed':     th['ed_hot'],
+                    'in_opt_range': 55 <= th['T_self_heated_C'] <= 65,
+                })
+            results.append({'h': h, 'label': label, 'points': pts})
+        return ok(npsafe(results))
+    except Exception as e:
+        return err(traceback.format_exc())
 
 
 # ── API: joint optimisation ───────────────────────────────────────────────────
