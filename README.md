@@ -252,10 +252,10 @@ If you use this model in research, please cite:
 
 ```bibtex
 @software{al_air_paste_model,
-  author  = {[Your Name]},
+  author  = {cooldan},
   title   = {Al–Air Paste Battery Computational Model},
   year    = {2025},
-  url     = {https://github.com/YOUR_USERNAME/al-air-paste-model},
+  url     = {https://github.com/danxdz/Al-Air_Battery_Lab},
   note    = {Physics: BV · Cabrera-Mott · Krieger-Dougherty · Bruggeman · Casteel-Amis}
 }
 ```
