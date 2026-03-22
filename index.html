@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Al–Air Battery Lab</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+:root {
+  --bg:#0a0e0a; --surf:#111611; --card:#161d16; --bdr:#1e2a1e;
+  --g:#4ade80; --g2:#22c55e; --o:#fb923c; --y:#fbbf24;
+  --b:#38bdf8; --r:#f87171; --p:#e879f9; --dim:#2a3a2a;
+  --tx:#d4e8d4; --txd:#6b8f6b; --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:13px;min-height:100vh}
+/* header */
+header{display:flex;align-items:center;gap:14px;padding:12px 22px;border-bottom:1px solid var(--bdr);background:var(--surf);position:sticky;top:0;z-index:100}
+.logo{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--g)}
+.logo span{color:var(--txd)}
+.badge{font-family:var(--mono);font-size:9px;background:#1a2e1a;color:var(--g);border:1px solid var(--bdr);border-radius:3px;padding:2px 7px;letter-spacing:.08em}
+.spacer{flex:1}
+.hstat{text-align:right}.hstat .hv{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--g)}.hstat .hl{font-size:9px;color:var(--txd);letter-spacing:.08em}
+.hdiv{width:1px;height:26px;background:var(--bdr);margin:0 10px}
+/* layout */
+.shell{display:flex;height:calc(100vh - 47px)}
+/* nav */
+nav{width:192px;flex-shrink:0;background:var(--surf);border-right:1px solid var(--bdr);padding:14px 0;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.nsec{font-size:9px;font-weight:500;color:var(--txd);letter-spacing:.12em;text-transform:uppercase;padding:10px 14px 4px}
+.nb{display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;border:none;background:none;color:var(--txd);font-family:var(--sans);font-size:12px;text-align:left;width:100%;border-left:2px solid transparent;transition:all .12s}
+.nb:hover{color:var(--tx);background:var(--card)}.nb.active{color:var(--g);border-left-color:var(--g);background:#0f1e0f}
+.ni{font-size:13px;width:16px;text-align:center}
+/* main */
+main{flex:1;overflow-y:auto;padding:18px 22px}
+.panel{display:none}.panel.active{display:block}
+/* cards */
+.crow{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.card{flex:1;min-width:110px;background:var(--card);border:1px solid var(--bdr);border-radius:5px;padding:10px 12px}
+.cl{font-size:9px;color:var(--txd);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.cv{font-family:var(--mono);font-size:18px;font-weight:600;line-height:1}
+.cu{font-size:9px;color:var(--txd);margin-left:2px}
+.cs{font-size:10px;color:var(--txd);margin-top:3px}
+.cg .cv{color:var(--g)}.co .cv{color:var(--o)}.cy .cv{color:var(--y)}.cb .cv{color:var(--b)}.cr .cv{color:var(--r)}
+/* section heads */
+.sh{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.st{font-size:10px;font-weight:500;color:var(--txd);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.sl{flex:1;height:1px;background:var(--bdr)}
+/* chart grid */
+.cg2{display:grid;gap:14px;margin-bottom:16px}.cols2{grid-template-columns:1fr 1fr}.cols3{grid-template-columns:1fr 1fr 1fr}
+.cbox{background:var(--card);border:1px solid var(--bdr);border-radius:5px;padding:12px}
+.ct{font-size:10px;font-weight:500;color:var(--txd);letter-spacing:.05em;margin-bottom:8px}
+.cbox canvas{max-height:210px}
+/* controls */
+.ctrl{background:var(--card);border:1px solid var(--bdr);border-radius:5px;padding:14px;margin-bottom:14px}
+.ctrl-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.ctrl-row:last-child{margin-bottom:0}
+label{font-size:11px;color:var(--txd);width:130px;flex-shrink:0}
+input[type=range]{flex:1;accent-color:var(--g);background:var(--bdr);height:4px;cursor:pointer}
+input[type=number],select{background:var(--bg);border:1px solid var(--bdr);border-radius:3px;color:var(--tx);font-family:var(--mono);font-size:11px;padding:4px 8px;width:90px;outline:none}
+input[type=number]:focus,select:focus{border-color:var(--g)}
+.vval{font-family:var(--mono);font-size:11px;color:var(--tx);width:52px;text-align:right;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:500;border:1px solid;transition:all .12s}
+.btp{background:#0f2e0f;color:var(--g);border-color:var(--g2)}.btp:hover{background:#172e17}
+.btg{background:transparent;color:var(--txd);border-color:var(--bdr)}.btg:hover{color:var(--tx)}
+.bto{background:#2e1a0a;color:var(--o);border-color:#5a3010}.bto:hover{background:#3d2510}
+/* alloy sliders */
+.asl{display:flex;flex-direction:column;gap:8px}
+.asr{display:flex;align-items:center;gap:8px}
+.asl-lbl{font-family:var(--mono);font-size:11px;font-weight:600;width:24px;text-align:center}
+.mg-c{color:var(--o)}.in-c{color:var(--b)}.sn-c{color:var(--g)}.zn-c{color:var(--y)}.ga-c{color:var(--p)}.al-c{color:var(--txd)}
+/* result display */
+.rbox{background:var(--card);border:1px solid var(--bdr);border-radius:5px;padding:12px}
+.rrow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bdr)}
+.rrow:last-child{border-bottom:none}
+.rk{font-size:11px;color:var(--txd)}
+.rv{font-family:var(--mono);font-size:12px;font-weight:500}
+.tag{display:inline-block;font-size:9px;padding:2px 7px;border-radius:3px;font-family:var(--mono)}
+.t-act{background:#2e1a0a;color:var(--o)}.t-inh{background:#0a1e2e;color:var(--b)}
+.t-bal{background:#0a2e1a;color:var(--g)}.t-neu{background:#1a1e1a;color:var(--txd)}
+.t-ok{background:#0a2e1a;color:var(--g)}.t-warn{background:#2e2a0a;color:var(--y)}.t-bad{background:#2e0a0a;color:var(--r)}
+/* calibration */
+textarea{width:100%;background:var(--bg);border:1px solid var(--bdr);border-radius:3px;color:var(--tx);font-family:var(--mono);font-size:11px;padding:8px;resize:vertical;outline:none;min-height:110px;line-height:1.7}
+textarea:focus{border-color:var(--g)}
+/* loader */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--bdr);border-top-color:var(--g);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading{color:var(--txd);font-size:11px;font-family:var(--mono)}
+/* table */
+table{width:100%;border-collapse:collapse;font-size:11px}
+thead th{font-size:9px;color:var(--txd);letter-spacing:.1em;text-transform:uppercase;padding:6px 10px;text-align:left;border-bottom:1px solid var(--bdr)}
+tbody tr{border-bottom:1px solid #111;transition:background .1s}
+tbody tr:hover{background:var(--card)}
+tbody td{padding:6px 10px;font-family:var(--mono)}
+/* opt table */
+.opt-row{display:grid;grid-template-columns:30px 90px 1fr 80px 80px 80px auto;gap:8px;padding:6px 10px;border-bottom:1px solid #111;align-items:center;font-family:var(--mono);font-size:11px}
+.opt-row:hover{background:var(--card)}
+.opt-head{font-size:9px;color:var(--txd);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--bdr)}
+/* scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+/* stack bar */
+.stk{display:flex;height:24px;border-radius:3px;overflow:hidden;margin:8px 0}
+.stks{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;overflow:hidden;transition:width .3s}
+.stleg{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.stli{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--txd)}
+.stdo{width:8px;height:8px;border-radius:2px}
+/* status bar */
+#status{font-family:var(--mono);font-size:10px;color:var(--txd);margin-top:8px;min-height:16px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Al<span>–</span>Air<span> /</span> Battery Lab</div>
+  <span class="badge">Live · Flask + al_air_model.py</span>
+  <div class="spacer"></div>
+  <div class="hstat"><div class="hv" id="hv">—</div><div class="hl">VOLTAGE</div></div>
+  <div class="hdiv"></div>
+  <div class="hstat"><div class="hv" id="hed">—</div><div class="hl">ENERGY</div></div>
+  <div class="hdiv"></div>
+  <div class="hstat"><div class="hv" id="hcorr">—</div><div class="hl">CORROSION</div></div>
+</header>
+
+<div class="shell">
+<nav>
+  <div class="nsec">Analysis</div>
+  <button class="nb active" onclick="nav(this,'baseline')"><span class="ni">⚡</span> Baseline</button>
+  <button class="nb" onclick="nav(this,'polarisation')"><span class="ni">📈</span> Polarisation</button>
+  <button class="nb" onclick="nav(this,'sweeps')"><span class="ni">🔄</span> Sweeps</button>
+  <div class="nsec">Alloy Design</div>
+  <button class="nb" onclick="nav(this,'alloy')"><span class="ni">🧪</span> Alloy Builder</button>
+  <button class="nb" onclick="nav(this,'optimizer')"><span class="ni">🏆</span> Optimizer</button>
+  <button class="nb" onclick="nav(this,'atoms')"><span class="ni">⚛️</span> Atom DB</button>
+  <div class="nsec">Calibration</div>
+  <button class="nb" onclick="nav(this,'calibrate')"><span class="ni">🎯</span> Calibrate</button>
+  <button class="nb" onclick="nav(this,'montecarlo')"><span class="ni">🎲</span> Monte Carlo</button>
+</nav>
+
+<main>
+
+<!-- ═══════════ BASELINE ═══════════ -->
+<div class="panel active" id="panel-baseline">
+  <div class="sh"><span class="st">Baseline — live computation from al_air_model.py</span><div class="sl"></div></div>
+
+  <div class="ctrl">
+    <div class="ctrl-row"><label>Particle d (µm)</label><input type="range" id="b-d" min="5" max="200" value="100" oninput="sv('bv-d',this.value+'µm');debRunBaseline()"><span class="vval" id="bv-d">100µm</span></div>
+    <div class="ctrl-row"><label>KOH (M)</label><input type="range" id="b-koh" min="15" max="80" value="35" oninput="sv('bv-koh',(this.value/10).toFixed(1)+'M');debRunBaseline()"><span class="vval" id="bv-koh">3.5M</span></div>
+    <div class="ctrl-row"><label>Al vol% in paste</label><input type="range" id="b-vf" min="15" max="65" value="53" oninput="sv('bv-vf',this.value+'%');debRunBaseline()"><span class="vval" id="bv-vf">53%</span></div>
+    <div class="ctrl-row"><label>Temperature (°C)</label><input type="range" id="b-T" min="10" max="75" value="60" oninput="sv('bv-T',this.value+'°C');debRunBaseline()"><span class="vval" id="bv-T">60°C</span></div>
+    <div class="ctrl-row"><label>Inhibitor (%)</label><input type="range" id="b-inh" min="0" max="100" value="0" oninput="sv('bv-inh',this.value+'%');debRunBaseline()"><span class="vval" id="bv-inh">0%</span></div>
+    <div class="ctrl-row"><label>Current density (mA/cm²)</label><input type="range" id="b-j" min="1" max="70" value="50" oninput="sv('bv-j',this.value);debRunBaseline()"><span class="vval" id="bv-j">50</span></div>
+  </div>
+
+  <div class="crow" id="baseline-cards"></div>
+
+  <div class="sh"><span class="st">Overpotential budget</span><div class="sl"></div></div>
+  <div class="cbox" style="margin-bottom:14px">
+    <div id="stack-bar" class="stk"></div>
+    <div id="stack-leg" class="stleg"></div>
+  </div>
+
+  <div id="status"></div>
+</div>
+
+<!-- ═══════════ POLARISATION ═══════════ -->
+<div class="panel" id="panel-polarisation">
+  <div class="sh"><span class="st">Polarisation curve — calls cell_model() for each point</span><div class="sl"></div></div>
+  <div class="ctrl" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">KOH (M)</label><input type="number" id="p-koh" value="3.5" step="0.1" min="1" max="8" style="width:70px"></div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">T (°C)</label><input type="number" id="p-T" value="60" step="1" min="10" max="75" style="width:70px"></div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Al vol%</label><input type="number" id="p-vf" value="53" step="1" min="15" max="65" style="width:70px"></div>
+    <button class="btp" onclick="runPolarisation()">▶ Run</button>
+    <span id="pol-status" class="loading"></span>
+  </div>
+  <div class="cg2 cols2">
+    <div class="cbox"><div class="ct">Cell voltage vs current density</div><canvas id="ch-pol-v" style="max-height:230px"></canvas></div>
+    <div class="cbox"><div class="ct">Overpotential contributions (mV)</div><canvas id="ch-pol-eta" style="max-height:230px"></canvas></div>
+  </div>
+  <div class="cg2 cols2">
+    <div class="cbox"><div class="ct">Energy density (Wh/kg) vs current</div><canvas id="ch-pol-ed" style="max-height:210px"></canvas></div>
+    <div class="cbox"><div class="ct">Power density (W/kg) vs current</div><canvas id="ch-pol-pd" style="max-height:210px"></canvas></div>
+  </div>
+</div>
+
+<!-- ═══════════ SWEEPS ═══════════ -->
+<div class="panel" id="panel-sweeps">
+  <div class="sh"><span class="st">Parameter sweeps — live from model</span><div class="sl"></div></div>
+  <div class="ctrl" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Sweep</label>
+      <select id="sw-param">
+        <option value="c_KOH">KOH concentration</option>
+        <option value="T_C">Temperature</option>
+        <option value="vf_pct">Al vol%</option>
+        <option value="d_um">Particle size</option>
+        <option value="inh_pct">Inhibitor %</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">From</label><input type="number" id="sw-lo" value="1.5" style="width:70px"></div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">To</label><input type="number" id="sw-hi" value="8.0" style="width:70px"></div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">j (mA/cm²)</label><input type="number" id="sw-j" value="50" style="width:70px"></div>
+    <button class="btp" onclick="runSweep()">▶ Run</button>
+    <span id="sw-status" class="loading"></span>
+  </div>
+  <div class="cg2 cols2">
+    <div class="cbox"><div class="ct" id="sw-title-v">Voltage vs parameter</div><canvas id="ch-sw-v" style="max-height:230px"></canvas></div>
+    <div class="cbox"><div class="ct" id="sw-title-e">Energy vs parameter</div><canvas id="ch-sw-e" style="max-height:230px"></canvas></div>
+  </div>
+  <div class="cg2 cols2">
+    <div class="cbox"><div class="ct">Corrosion % vs parameter</div><canvas id="ch-sw-c" style="max-height:210px"></canvas></div>
+    <div class="cbox"><div class="ct">Power density vs parameter</div><canvas id="ch-sw-p" style="max-height:210px"></canvas></div>
+  </div>
+</div>
+
+<!-- ═══════════ ALLOY ═══════════ -->
+<div class="panel" id="panel-alloy">
+  <div class="sh"><span class="st">Alloy builder — exact result from cell_model() for any composition</span><div class="sl"></div></div>
+  <div style="display:grid;grid-template-columns:300px 1fr;gap:16px">
+    <div>
+      <div class="ctrl">
+        <div class="asl" id="alloy-sliders"></div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bdr)">
+          <div class="ctrl-row"><label>Current j (mA/cm²)</label><input type="range" id="a-j" min="1" max="70" value="50" oninput="sv('av-j',this.value);debRunAlloy()"><span class="vval" id="av-j">50</span></div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="btp" onclick="runAlloySweep()">▶ Sweep selected</button>
+        </div>
+      </div>
+      <div class="rbox" id="alloy-result">
+        <div style="font-size:10px;color:var(--txd)">Adjust sliders to compute...</div>
+      </div>
+    </div>
+    <div>
+      <div class="cbox" style="margin-bottom:12px"><div class="ct" id="asw-title">Net energy vs additive content</div><canvas id="ch-alloy-sw" style="max-height:240px"></canvas></div>
+      <div class="cbox"><div class="ct">Corrosion vs additive content</div><canvas id="ch-alloy-corr" style="max-height:200px"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ OPTIMIZER ═══════════ -->
+<div class="panel" id="panel-optimizer">
+  <div class="sh"><span class="st">Multi-objective Pareto optimizer — optimize_alloy() from al_air_alloy.py</span><div class="sl"></div></div>
+  <div class="ctrl" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Goal</label>
+      <select id="opt-goal"><option value="balanced">Balanced</option><option value="energy">Max energy</option><option value="net">Max net energy</option><option value="stability">Max stability</option></select>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Samples</label>
+      <select id="opt-n"><option value="1000">1 000 (fast ~5s)</option><option value="2000" selected>2 000 (~10s)</option><option value="4000">4 000 (~20s)</option></select>
+    </div>
+    <button class="btp" onclick="runOptimizer()">▶ Run Pareto search</button>
+    <span id="opt-status" class="loading"></span>
+  </div>
+  <div class="cg2 cols2" id="opt-charts" style="display:none">
+    <div class="cbox"><div class="ct">Design space — net energy vs corrosion (colour = voltage)</div><canvas id="ch-opt-space" style="max-height:260px"></canvas></div>
+    <div class="cbox"><div class="ct">Pareto front compositions — top 10</div><canvas id="ch-opt-comp" style="max-height:260px"></canvas></div>
+  </div>
+  <div id="opt-table" style="margin-top:14px"></div>
+</div>
+
+<!-- ═══════════ ATOMS ═══════════ -->
+<div class="panel" id="panel-atoms">
+  <div class="sh"><span class="st">Atomic database — CRC Handbook + NIST (loaded from al_air_model.py)</span><div class="sl"></div></div>
+  <div class="cg2 cols2" style="margin-bottom:16px">
+    <div class="cbox"><div class="ct">Theoretical energy density (Wh/kg)</div><canvas id="ch-atom-ed" style="max-height:210px"></canvas></div>
+    <div class="cbox"><div class="ct">Inhibitor effectiveness vs Ea</div><canvas id="ch-atom-inh" style="max-height:210px"></canvas></div>
+  </div>
+  <table><thead><tr><th>Symbol</th><th>E₀ (V)</th><th>Ed (Wh/kg)</th><th>Ea (kJ/mol)</th><th>Inh eff %</th><th>Role</th><th>Note</th></tr></thead>
+  <tbody id="atom-tbody"></tbody></table>
+</div>
+
+<!-- ═══════════ CALIBRATE ═══════════ -->
+<div class="panel" id="panel-calibrate">
+  <div class="sh"><span class="st">Calibrate — calls calibrate() from al_air_calibrate.py</span><div class="sl"></div></div>
+  <div style="display:grid;grid-template-columns:280px 1fr;gap:16px">
+    <div>
+      <div class="ctrl">
+        <div style="font-size:10px;color:var(--txd);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Paste measurements (j_mA/cm², V)</div>
+        <textarea id="cal-input" placeholder="2.0, 1.32&#10;5.0, 1.25&#10;10.0, 1.18&#10;25.0, 1.05&#10;50.0, 0.92"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btp" onclick="runCalibrate()">▶ Calibrate</button>
+          <button class="btg" onclick="loadCalibExample()">Example</button>
+        </div>
+        <div id="cal-result" style="margin-top:10px"></div>
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:var(--txd);line-height:1.9">
+        <div style="color:var(--g)">j=2–5</div> → OCV + activation<br>
+        <div style="color:var(--y)">j=5–10</div> → BV slope (i₀)<br>
+        <div style="color:var(--o)">j=10–25</div> → ohmic (L_eff)<br>
+        <div style="color:var(--r)">j=25–50</div> → mass transport
+      </div>
+    </div>
+    <div class="cbox">
+      <div class="ct">Model vs experimental</div>
+      <canvas id="ch-cal" style="max-height:320px"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MONTE CARLO ═══════════ -->
+<div class="panel" id="panel-montecarlo">
+  <div class="sh"><span class="st">Monte Carlo uncertainty — monte_carlo_uncertainty() from al_air_calibrate.py</span><div class="sl"></div></div>
+  <div class="ctrl" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Samples</label>
+      <select id="mc-n"><option value="100">100 (fast)</option><option value="200" selected>200</option><option value="500">500 (slow)</option></select>
+    </div>
+    <button class="btp" onclick="runMonteCarlo()">▶ Run uncertainty</button>
+    <span id="mc-status" class="loading"></span>
+  </div>
+  <div class="cg2 cols2">
+    <div class="cbox"><div class="ct">90% uncertainty band on discharge curve</div><canvas id="ch-mc-band" style="max-height:260px"></canvas></div>
+    <div class="cbox">
+      <div class="ct">Parameter uncertainty assumptions</div>
+      <div style="padding:8px 0;font-size:11px;line-height:2.2;color:var(--txd)">
+        <div><span style="color:var(--g);font-family:var(--mono)">E_ocv_ref</span> → ±30 mV (measurement accuracy)</div>
+        <div><span style="color:var(--o);font-family:var(--mono)">i₀_Al_ref</span> → ±50% log-normal (exchange current)</div>
+        <div><span style="color:var(--b);font-family:var(--mono)">L_eff_m</span>   → ±20% (paste geometry)</div>
+        <div style="margin-top:10px;font-size:10px">Band width = 90th–10th percentile at each j.</div>
+        <div style="font-size:10px">This is proper UQ — not noise on outputs.</div>
+      </div>
+      <div id="mc-result" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+// ── utils ─────────────────────────────────────────────────────────────────────
+Chart.defaults.color='#6b8f6b';Chart.defaults.borderColor='#1e2a1e';
+Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.font.size=10;
+const C={g:'#4ade80',o:'#fb923c',y:'#fbbf24',b:'#38bdf8',r:'#f87171',p:'#e879f9'};
+
+function sv(id,v){document.getElementById(id).textContent=v}
+function nav(el,id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  el.classList.add('active');
+  if(id==='atoms' && !atomsLoaded) loadAtoms();
+  if(id==='polarisation') runPolarisation();
+}
+
+async function api(endpoint, body){
+  const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  return r.json();
+}
+
+// debounce
+const debounce=(fn,ms=350)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
+
+// chart manager — destroy before recreate
+const charts={};
+function mkChart(id,cfg){
+  if(charts[id]){charts[id].destroy()}
+  const ctx=document.getElementById(id);
+  if(!ctx)return null;
+  charts[id]=new Chart(ctx,cfg);
+  return charts[id];
+}
+
+function baseLineOpts(xLabel='j (mA/cm²)', yLabel=''){
+  return{responsive:true,maintainAspectRatio:true,parsing:false,
+    scales:{x:{type:'linear',title:{display:!!xLabel,text:xLabel},grid:{color:'#1e2a1e'}},
+            y:{title:{display:!!yLabel,text:yLabel},grid:{color:'#1e2a1e'}}},
+    plugins:{legend:{display:false}}};
+}
+
+// ── BASELINE ─────────────────────────────────────────────────────────────────
+function getBaselineParams(){
+  return{
+    d_um:   parseFloat(document.getElementById('b-d').value),
+    c_KOH:  parseFloat(document.getElementById('b-koh').value)/10,
+    vf_pct: parseFloat(document.getElementById('b-vf').value),
+    T_C:    parseFloat(document.getElementById('b-T').value),
+    inh_pct:parseFloat(document.getElementById('b-inh').value),
+    j:      parseFloat(document.getElementById('b-j').value),
+  };
+}
+
+async function runBaseline(){
+  const p=getBaselineParams();
+  const status=document.getElementById('status');
+  status.innerHTML='<span class="spin"></span> Computing...';
+  const resp=await api('/api/baseline',p);
+  if(!resp.ok){status.textContent='Error: '+resp.error;return}
+  const d=resp.data;
+  // header
+  document.getElementById('hv').textContent=d.V_cell.toFixed(3)+' V';
+  document.getElementById('hed').textContent=d.ed_Wh_kg_paste.toFixed(0)+' Wh/kg';
+  document.getElementById('hcorr').textContent=d.parasitic_pct.toFixed(2)+'%';
+  // cards
+  const cards=[
+    {l:'Cell Voltage',v:d.V_cell.toFixed(4),u:'V',s:`OCV = ${d.E_ocv.toFixed(3)} V`,c:'cg'},
+    {l:'Energy (cell)',v:d.ed_Wh_kg_paste.toFixed(0),u:'Wh/kg',s:'active paste',c:'cg'},
+    {l:'Energy (system)',v:d.ed_Wh_kg_system.toFixed(0),u:'Wh/kg',s:'×0.612 penalties',c:'cb'},
+    {l:'Net useful',v:d.net_useful_ed.toFixed(0),u:'Wh/kg',s:'ed × utilisation',c:'cg'},
+    {l:'Power',v:d.pd_W_kg_paste.toFixed(0),u:'W/kg',s:'geometric formula',c:'cy'},
+    {l:'Corrosion',v:d.parasitic_pct.toFixed(2),u:'%',s:'parasitic loss',c:d.parasitic_pct>10?'cr':'co'},
+    {l:'Al utilisation',v:d.utilisation_pct.toFixed(1),u:'%',s:'fraction reacted',c:'cg'},
+    {l:'Voltage eff.',v:(d.v_eff*100).toFixed(1),u:'%',s:`V/OCV`,c:'cy'},
+  ];
+  const el=document.getElementById('baseline-cards');
+  el.innerHTML=cards.map(c=>`<div class="card ${c.c}">
+    <div class="cl">${c.l}</div>
+    <div class="cv">${c.v}<span class="cu">${c.u}</span></div>
+    <div class="cs">${c.s}</div></div>`).join('');
+  // stack bar
+  const tot=d.eta_anode_V+d.eta_cathode_V+d.eta_ohmic_V+d.eta_mass_trans_V;
+  const segs=[
+    {l:'η anode',v:d.eta_anode_V,    col:C.o},
+    {l:'η cathode',v:d.eta_cathode_V, col:C.r},
+    {l:'η ohmic',v:d.eta_ohmic_V,    col:C.y},
+    {l:'η mass tr.',v:d.eta_mass_trans_V,col:C.b},
+  ];
+  document.getElementById('stack-bar').innerHTML=segs.map(s=>{
+    const pct=(s.v/tot*100).toFixed(0);
+    return `<div class="stks" style="width:${pct}%;background:${s.col}22;border-right:1px solid ${s.col}44;color:${s.col}">${(s.v*1000).toFixed(0)}</div>`;
+  }).join('');
+  document.getElementById('stack-leg').innerHTML=segs.map(s=>
+    `<div class="stli"><div class="stdo" style="background:${s.col}"></div>${s.l} ${(s.v*1000).toFixed(1)} mV</div>`
+  ).join('');
+  status.textContent=`✓ Mechanism: ${d.dominant_mechanism}`;
+}
+const debRunBaseline=debounce(runBaseline,300);
+runBaseline();
+
+// ── POLARISATION ──────────────────────────────────────────────────────────────
+async function runPolarisation(){
+  const status=document.getElementById('pol-status');
+  status.innerHTML='<span class="spin"></span>';
+  const body={
+    c_KOH:  parseFloat(document.getElementById('p-koh').value),
+    T_C:    parseFloat(document.getElementById('p-T').value),
+    vf_pct: parseFloat(document.getElementById('p-vf').value),
+    d_um: 100, inh_pct:0,
+  };
+  const resp=await api('/api/polarisation',body);
+  if(!resp.ok){status.textContent='Error';return}
+  const pts=resp.data;
+  const js=pts.map(d=>d.j), Vs=pts.map(d=>d.V);
+  const makeDs=(label,data,color,dash)=>({
+    label,data:pts.map((d,i)=>({x:d.j,y:data[i]})),
+    borderColor:color,pointRadius:0,borderWidth:2,fill:false,tension:0.3,
+    ...(dash?{borderDash:[4,2]}:{})
+  });
+  mkChart('ch-pol-v',{type:'line',data:{datasets:[makeDs('V cell',Vs,C.g)]},
+    options:{...baseLineOpts('j (mA/cm²)','V cell (V)'),plugins:{legend:{display:false}}}});
+  mkChart('ch-pol-eta',{type:'line',
+    data:{datasets:[
+      makeDs('η BV',pts.map(d=>d.eta_bv),C.o),
+      makeDs('η ohmic',pts.map(d=>d.eta_ohm),C.y,true),
+      makeDs('η MT',pts.map(d=>d.eta_mt),C.b,true),
+    ]},
+    options:{...baseLineOpts('j (mA/cm²)','Overpotential (mV)'),plugins:{legend:{display:true,labels:{boxWidth:8}}}}});
+  mkChart('ch-pol-ed',{type:'line',data:{datasets:[makeDs('Ed',pts.map(d=>d.ed),C.b)]},
+    options:{...baseLineOpts('j (mA/cm²)','Wh/kg'),plugins:{legend:{display:false}}}});
+  mkChart('ch-pol-pd',{type:'line',data:{datasets:[makeDs('Power',pts.map(d=>d.pd),C.y)]},
+    options:{...baseLineOpts('j (mA/cm²)','W/kg'),plugins:{legend:{display:false}}}});
+  status.textContent=`✓ ${pts.length} points`;
+}
+
+// ── SWEEPS ────────────────────────────────────────────────────────────────────
+const sweepDefaults={c_KOH:[1.5,8],'T_C':[10,75],'vf_pct':[15,65],'d_um':[5,200],'inh_pct':[0,100]};
+document.getElementById('sw-param').addEventListener('change',function(){
+  const d=sweepDefaults[this.value]||[0,100];
+  document.getElementById('sw-lo').value=d[0];
+  document.getElementById('sw-hi').value=d[1];
+});
+
+async function runSweep(){
+  const status=document.getElementById('sw-status');
+  status.innerHTML='<span class="spin"></span>';
+  const param=document.getElementById('sw-param').value;
+  const body={
+    param, j:parseFloat(document.getElementById('sw-j').value),
+    lo:parseFloat(document.getElementById('sw-lo').value),
+    hi:parseFloat(document.getElementById('sw-hi').value), n:35,
+    ...{d_um:100,c_KOH:3.5,vf_pct:53,T_C:60,inh_pct:0}
+  };
+  const resp=await api('/api/sweep',body);
+  if(!resp.ok){status.textContent='Error';return}
+  const pts=resp.data.points;
+  const label=document.getElementById('sw-param').options[document.getElementById('sw-param').selectedIndex].text;
+  document.getElementById('sw-title-v').textContent=`Voltage vs ${label}`;
+  document.getElementById('sw-title-e').textContent=`Energy vs ${label}`;
+  const mk=(id,ydata,color,yLabel)=>mkChart(id,{type:'line',
+    data:{datasets:[{label:yLabel,data:pts.map(d=>({x:d.x,y:ydata(d)})),
+      borderColor:color,pointRadius:3,pointBackgroundColor:color,
+      borderWidth:2,fill:false,tension:0.3}]},
+    options:{...baseLineOpts(label,yLabel),plugins:{legend:{display:false}}}});
+  mk('ch-sw-v', d=>d.V,   C.g, 'V cell (V)');
+  mk('ch-sw-e', d=>d.ed,  C.b, 'Wh/kg');
+  mk('ch-sw-c', d=>d.corr,C.o, 'Corrosion (%)');
+  mk('ch-sw-p', d=>d.pd,  C.y, 'W/kg');
+  status.textContent=`✓ ${pts.length} points`;
+}
+
+// ── ALLOY BUILDER ─────────────────────────────────────────────────────────────
+const AELS=[
+  {sym:'Mg',cls:'mg-c',col:C.o,max:3},{sym:'In',cls:'in-c',col:C.b,max:3},
+  {sym:'Sn',cls:'sn-c',col:C.g,max:3},{sym:'Zn',cls:'zn-c',col:C.y,max:5},
+  {sym:'Ga',cls:'ga-c',col:C.p,max:2},
+];
+let lastAlloyEl='In';
+
+function initAlloySliders(){
+  const sg=document.getElementById('alloy-sliders');
+  AELS.forEach(el=>{
+    sg.innerHTML+=`<div class="asr">
+      <span class="asl-lbl ${el.cls}">${el.sym}</span>
+      <input type="range" min="0" max="${el.max*10}" value="0" id="as-${el.sym}"
+        oninput="sv('asv-${el.sym}',(this.value/10).toFixed(1)+'%');debRunAlloy();lastAlloyEl='${el.sym}'">
+      <span class="vval" id="asv-${el.sym}">0.0%</span></div>`;
+  });
+  sg.innerHTML+=`<div class="asr">
+    <span class="asl-lbl al-c">Al</span>
+    <div style="flex:1;height:4px;background:var(--bdr);border-radius:2px;overflow:hidden">
+      <div id="al-bar" style="height:100%;width:100%;background:#4ade8022;transition:width .2s"></div></div>
+    <span class="vval al-c" id="asv-Al">100.0%</span></div>`;
+}
+
+function getAlloyComp(){
+  let comp={Al:1.0};
+  AELS.forEach(el=>{
+    const f=parseFloat(document.getElementById('as-'+el.sym).value)/10/100;
+    if(f>0){comp[el.sym]=f;comp.Al-=f;}
+  });
+  comp.Al=Math.max(0,comp.Al);
+  const tot=Object.values(comp).reduce((a,b)=>a+b,0);
+  Object.keys(comp).forEach(k=>comp[k]/=tot);
+  return comp;
+}
+
+async function runAlloy(){
+  const comp=getAlloyComp();
+  const alPct=comp.Al*100;
+  document.getElementById('asv-Al').textContent=alPct.toFixed(1)+'%';
+  document.getElementById('al-bar').style.width=alPct+'%';
+  const j=parseFloat(document.getElementById('a-j').value);
+  const resp=await api('/api/alloy/eval',{composition:comp,j});
+  if(!resp.ok)return;
+  const d=resp.data;
+  const mechCls=d.dominant_mechanism.includes('activation')?'t-act':
+    d.dominant_mechanism.includes('inhibition')?'t-inh':
+    d.dominant_mechanism.includes('balanced')?'t-bal':'t-neu';
+  const feasCls=d.feasible?'t-ok':d.warnings.length>2?'t-bad':'t-warn';
+  const compStr=Object.entries(comp).filter(([k,v])=>v>5e-4).map(([k,v])=>`${k}:${(v*100).toFixed(1)}%`).join(' ');
+  document.getElementById('alloy-result').innerHTML=`
+    <div class="rrow"><span class="rk">Composition</span><span class="rv" style="font-size:9px;color:var(--txd)">${compStr}</span></div>
+    <div class="rrow"><span class="rk">Cell voltage</span><span class="rv" style="color:var(--g)">${d.V.toFixed(4)} V</span></div>
+    <div class="rrow"><span class="rk">ΔOCV</span><span class="rv" style="color:${d.dOCV_mV>=0?'var(--g)':'var(--o)'}">${d.dOCV_mV>=0?'+':''}${d.dOCV_mV.toFixed(1)} mV</span></div>
+    <div class="rrow"><span class="rk">Ed theoretical</span><span class="rv" style="color:var(--txd)">${d.ed_theoretical.toFixed(0)} Wh/kg</span></div>
+    <div class="rrow"><span class="rk">Ed effective</span><span class="rv" style="color:var(--b)">${d.ed_cell.toFixed(0)} Wh/kg</span></div>
+    <div class="rrow"><span class="rk">Net useful</span><span class="rv" style="color:var(--g)">${d.net_useful_ed.toFixed(0)} Wh/kg</span></div>
+    <div class="rrow"><span class="rk">Corrosion</span><span class="rv" style="color:${d.corr>10?'var(--r)':d.corr>7?'var(--o)':'var(--g)'}">${d.corr.toFixed(2)} %</span></div>
+    <div class="rrow"><span class="rk">Inhibitor total</span><span class="rv">${d.inh_total_pct.toFixed(1)} %</span></div>
+    <div class="rrow"><span class="rk">Synergy Mg+In/Sn</span><span class="rv" style="color:${d.has_synergy?'var(--g)':'var(--txd)'}">${d.has_synergy?'✓ Active':'—'}</span></div>
+    <div style="margin-top:8px"><span class="tag ${mechCls}">${d.dominant_mechanism}</span></div>
+    <div style="margin-top:6px"><span class="tag ${feasCls}">${d.feasible?`✓ Feasible (${d.total_add_pct.toFixed(1)}% total)`:d.warnings[0]}</span></div>`;
+}
+const debRunAlloy=debounce(runAlloy,280);
+
+async function runAlloySweep(){
+  const el=lastAlloyEl;
+  const max=AELS.find(a=>a.sym===el)?.max||3;
+  const resp=await api('/api/alloy/sweep',{element:el,max_pct:max,n:25,j:parseFloat(document.getElementById('a-j').value)});
+  if(!resp.ok)return;
+  const pts=resp.data;
+  const col=AELS.find(a=>a.sym===el)?.col||C.g;
+  document.getElementById('asw-title').textContent=`Net energy vs Al-${el} content`;
+  mkChart('ch-alloy-sw',{type:'line',
+    data:{datasets:[{label:`Al-${el} net energy`,data:pts.map(d=>({x:d.f,y:d.net_ed})),
+      borderColor:col,pointRadius:3,pointBackgroundColor:col,borderWidth:2,fill:false,tension:0.3}]},
+    options:{...baseLineOpts(el+' content (mol%)', 'Net Wh/kg'),plugins:{legend:{display:false}}}});
+  mkChart('ch-alloy-corr',{type:'line',
+    data:{datasets:[{label:`Al-${el} corrosion`,data:pts.map(d=>({x:d.f,y:d.corr})),
+      borderColor:C.o,pointRadius:3,pointBackgroundColor:C.o,borderWidth:2,fill:false,tension:0.3}]},
+    options:{...baseLineOpts(el+' content (mol%)', 'Corrosion (%)'),plugins:{legend:{display:false}}}});
+}
+
+initAlloySliders();
+runAlloy();
+
+// ── OPTIMIZER ─────────────────────────────────────────────────────────────────
+async function runOptimizer(){
+  const status=document.getElementById('opt-status');
+  status.innerHTML='<span class="spin"></span> Running (may take ~10s)...';
+  const resp=await api('/api/alloy/optimize',{
+    additives:['Mg','In','Sn','Zn','Ga'],
+    goal:document.getElementById('opt-goal').value,
+    n_samples:parseInt(document.getElementById('opt-n').value),
+  });
+  if(!resp.ok){status.textContent='Error: '+resp.error.slice(0,80);return}
+  const d=resp.data;
+  status.textContent=`✓ ${d.n_valid} valid, ${d.n_pareto} Pareto configs`;
+  document.getElementById('opt-charts').style.display='grid';
+
+  // design space scatter
+  const all=d.all;
+  mkChart('ch-opt-space',{type:'scatter',
+    data:{datasets:[
+      {label:'All configs',data:all.map(r=>({x:r.corr,y:r.net_ed})),
+        backgroundColor:all.map(r=>{const t=((r.voltage-1.0)/0.3);return `rgba(${Math.round(251*(1-t)+56*t)},${Math.round(146*(1-t)+189*t)},${Math.round(60*(1-t)+248*t)},0.3)`}),
+        pointRadius:3,borderWidth:0},
+      {label:'Pareto',data:d.pareto.map(r=>({x:r.corr,y:r.net_ed})),
+        backgroundColor:'#ffffff',pointRadius:7,borderWidth:2,borderColor:C.o},
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'Corrosion (%)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'Net energy (Wh/kg)'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:true,labels:{boxWidth:8}}}}});
+
+  // top 10 compositions bar
+  const els=['Mg','In','Sn','Zn','Ga'];
+  const top10=d.top10;
+  mkChart('ch-opt-comp',{type:'bar',
+    data:{labels:top10.map((_,i)=>`#${i+1}`),
+      datasets:els.map((el,ei)=>({
+        label:el,
+        data:top10.map(r=>r.comp[el]||0),
+        backgroundColor:[C.o,C.b,C.g,C.y,C.p][ei]+'88',
+        borderColor:[C.o,C.b,C.g,C.y,C.p][ei],
+        borderWidth:1,borderRadius:2,
+      }))},
+    options:{responsive:true,maintainAspectRatio:true,
+      scales:{x:{stacked:true,grid:{color:'#1e2a1e'}},y:{stacked:true,title:{display:true,text:'mol%'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:true,labels:{boxWidth:8,padding:10}}}}});
+
+  // top 10 table
+  const el=document.getElementById('opt-table');
+  el.innerHTML=`<div class="sh"><span class="st">Top 10 configurations</span><div class="sl"></div></div>
+  <div class="opt-row opt-head"><span>#</span><span>Composition</span><span>Net Ed (Wh/kg)</span><span>Corr %</span><span>Power W/kg</span><span>Voltage V</span><span>Synergy</span></div>`+
+  top10.map((r,i)=>{
+    const comp=Object.entries(r.comp).filter(([k,v])=>v>0.05&&k!=='Al').map(([k,v])=>`${k}:${v.toFixed(1)}%`).join(' ');
+    return `<div class="opt-row">
+      <span style="color:var(--txd)">${i+1}</span>
+      <span style="font-size:10px;color:var(--txd)">${comp}</span>
+      <span style="color:var(--g)">${r.net_ed.toFixed(0)}</span>
+      <span style="color:var(--o)">${r.corr.toFixed(2)}</span>
+      <span>${r.power.toFixed(0)}</span>
+      <span>${r.voltage.toFixed(4)}</span>
+      <span style="color:${r.synergy?'var(--g)':'var(--txd)'}">${r.synergy?'✓':'—'}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── ATOMS ─────────────────────────────────────────────────────────────────────
+let atomsLoaded=false;
+async function loadAtoms(){
+  const resp=await fetch('/api/atoms');
+  const j=await resp.json();
+  if(!j.ok)return;
+  atomsLoaded=true;
+  const atoms=j.data;
+  const roleCol={base:C.g,activator:C.o,inhibitor:C.b,modifier:C.y};
+  mkChart('ch-atom-ed',{type:'bar',
+    data:{labels:atoms.map(a=>a.sym),datasets:[{label:'Ed theory',
+      data:atoms.map(a=>a.ed_theory),
+      backgroundColor:atoms.map(a=>(roleCol[a.role]||C.g)+'66'),
+      borderColor:atoms.map(a=>roleCol[a.role]||C.g),
+      borderWidth:1,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:true,
+      scales:{x:{grid:{color:'#1e2a1e'}},y:{grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:false}}}});
+  mkChart('ch-atom-inh',{type:'bar',
+    data:{labels:atoms.map(a=>a.sym),datasets:[
+      {label:'Inh eff %',data:atoms.map(a=>a.inh_pct),backgroundColor:C.b+'55',borderColor:C.b,borderWidth:1,borderRadius:3,yAxisID:'y'},
+      {label:'Ea kJ/mol',data:atoms.map(a=>a.Ea_kJ),type:'line',borderColor:C.y,pointRadius:4,fill:false,yAxisID:'y2',borderWidth:2},
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,
+      scales:{x:{grid:{color:'#1e2a1e'}},y:{position:'left',grid:{color:'#1e2a1e'}},y2:{position:'right',grid:{display:false},min:30,max:60}},
+      plugins:{legend:{display:true,labels:{boxWidth:8}}}}});
+  document.getElementById('atom-tbody').innerHTML=atoms.map(a=>`<tr>
+    <td style="color:${roleCol[a.role]||C.g};font-weight:600">${a.sym}</td>
+    <td style="color:var(--txd)">${a.E0}</td><td>${a.ed_theory.toLocaleString()}</td>
+    <td>${a.Ea_kJ}</td><td>${a.inh_pct}%</td>
+    <td style="color:${roleCol[a.role]||C.g}">${a.role}</td>
+    <td style="font-family:var(--sans);color:var(--txd);font-size:10px">${a.note}</td>
+  </tr>`).join('');
+}
+
+// ── CALIBRATE ─────────────────────────────────────────────────────────────────
+let calChart=null;
+function loadCalibExample(){
+  document.getElementById('cal-input').value='2.0, 1.235\n5.0, 1.202\n10.0, 1.176\n25.0, 1.138\n50.0, 1.105';
+  runCalibrate();
+}
+async function runCalibrate(){
+  const raw=document.getElementById('cal-input').value.trim();
+  if(!raw)return;
+  const points=raw.split('\n').map(l=>{const p=l.split(',');return{j:parseFloat(p[0]),V:parseFloat(p[1])};}).filter(p=>!isNaN(p.j)&&!isNaN(p.V));
+  if(points.length<3){document.getElementById('cal-result').innerHTML='<span style="color:var(--r)">Need ≥3 points</span>';return}
+  const resp=await api('/api/calibrate',{points});
+  if(!resp.ok){document.getElementById('cal-result').innerHTML='<span style="color:var(--r)">Error</span>';return}
+  const d=resp.data;
+  const good=d.achieved;
+  document.getElementById('cal-result').innerHTML=`
+    <div class="rrow"><span class="rk">RMSE before</span><span class="rv" style="color:var(--r)">${d.rmse_before_mV} mV</span></div>
+    <div class="rrow"><span class="rk">RMSE after</span><span class="rv" style="color:${good?'var(--g)':'var(--o)'}">${d.rmse_after_mV} mV</span></div>
+    <div class="rrow"><span class="rk">E_ocv_ref</span><span class="rv">${d.params.E_ocv_ref}</span></div>
+    <div class="rrow"><span class="rk">i₀_Al_ref</span><span class="rv">${d.params.i0_Al_ref.toExponential(3)}</span></div>
+    <div style="margin-top:8px"><span class="tag ${good?'t-ok':'t-warn'}">${good?'✓ < 30 mV — publication ready':'○ Run full calibration with --mc'}</span></div>`;
+  calChart=mkChart('ch-cal',{type:'line',
+    data:{datasets:[
+      {label:'Before',data:d.curve_before.map(p=>({x:p.j,y:p.V})),borderColor:C.r,pointRadius:0,borderWidth:1.5,fill:false,tension:0.3,borderDash:[4,2]},
+      {label:'After',data:d.curve_after.map(p=>({x:p.j,y:p.V})), borderColor:C.g,pointRadius:0,borderWidth:2,fill:false,tension:0.3},
+      {label:'Experimental',data:points.map(p=>({x:p.j,y:p.V})),borderColor:'white',pointRadius:6,showLine:false,borderWidth:2},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'j (mA/cm²)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'V cell (V)'},grid:{color:'#1e2a1e'},min:0.5,max:1.6}},
+      plugins:{legend:{display:true,labels:{boxWidth:8}}}}});
+}
+
+// ── MONTE CARLO ───────────────────────────────────────────────────────────────
+async function runMonteCarlo(){
+  const status=document.getElementById('mc-status');
+  status.innerHTML='<span class="spin"></span> Running MC...';
+  const resp=await api('/api/montecarlo',{n:parseInt(document.getElementById('mc-n').value),params:{}});
+  if(!resp.ok){status.textContent='Error';return}
+  const d=resp.data;
+  status.textContent=`✓ 90% band: ±${d.band_mV} mV`;
+  document.getElementById('mc-result').innerHTML=`<div class="rrow"><span class="rk">90% band width</span><span class="rv" style="color:var(--g)">±${d.band_mV} mV</span></div>
+    <div class="rrow"><span class="rk">Samples</span><span class="rv">${document.getElementById('mc-n').value}</span></div>`;
+  mkChart('ch-mc-band',{type:'line',
+    data:{datasets:[
+      {label:'90% CI',data:d.j.map((j,i)=>({x:j,y:d.p95[i]})),borderColor:'transparent',
+        backgroundColor:C.g+'22',fill:'+1',pointRadius:0,tension:0.3},
+      {label:'10th pct',data:d.j.map((j,i)=>({x:j,y:d.p5[i]})),borderColor:'transparent',
+        backgroundColor:'transparent',fill:false,pointRadius:0,tension:0.3},
+      {label:'Median',data:d.j.map((j,i)=>({x:j,y:d.med[i]})),borderColor:C.g,
+        pointRadius:0,borderWidth:2,fill:false,tension:0.3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'j (mA/cm²)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'V cell (V)'},grid:{color:'#1e2a1e'},min:0.8,max:1.6}},
+      plugins:{legend:{display:true,labels:{boxWidth:8}}}}});
+}
+</script>
+</body>
+</html>
