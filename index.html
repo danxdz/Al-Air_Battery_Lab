@@ -131,6 +131,10 @@ tbody td{padding:6px 10px;font-family:var(--mono)}
   <button class="nb" onclick="nav(this,'alloy')"><span class="ni">🧪</span> Alloy Builder</button>
   <button class="nb" onclick="nav(this,'optimizer')"><span class="ni">🏆</span> Optimizer</button>
   <button class="nb" onclick="nav(this,'atoms')"><span class="ni">⚛️</span> Atom DB</button>
+  <div class="nsec">Advanced</div>
+  <button class="nb" onclick="nav(this,'joint')"><span class="ni">🔗</span> Joint Optimise</button>
+  <button class="nb" onclick="nav(this,'tempmap')"><span class="ni">🌡️</span> Alloy vs Temp</button>
+  <button class="nb" onclick="nav(this,'currentmap')"><span class="ni">⚡</span> Alloy vs Current</button>
   <div class="nsec">Calibration</div>
   <button class="nb" onclick="nav(this,'calibrate')"><span class="ni">🎯</span> Calibrate</button>
   <button class="nb" onclick="nav(this,'montecarlo')"><span class="ni">🎲</span> Monte Carlo</button>
@@ -170,6 +174,7 @@ tbody td{padding:6px 10px;font-family:var(--mono)}
     <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">T (°C)</label><input type="number" id="p-T" value="60" step="1" min="10" max="75" style="width:70px"></div>
     <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Al vol%</label><input type="number" id="p-vf" value="53" step="1" min="15" max="65" style="width:70px"></div>
     <button class="btp" onclick="runPolarisation()">▶ Run</button>
+    <button class="btg" style="font-size:10px;padding:4px 10px" onclick="downloadCSV('polarisation.csv',lastPolPts)">⬇ CSV</button>
     <span id="pol-status" class="loading"></span>
   </div>
   <div class="cg2 cols2">
@@ -199,6 +204,7 @@ tbody td{padding:6px 10px;font-family:var(--mono)}
     <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">To</label><input type="number" id="sw-hi" value="8.0" style="width:70px"></div>
     <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">j (mA/cm²)</label><input type="number" id="sw-j" value="50" style="width:70px"></div>
     <button class="btp" onclick="runSweep()">▶ Run</button>
+    <button class="btg" style="font-size:10px;padding:4px 10px" onclick="downloadCSV('sweep.csv',lastSweepPts)">⬇ CSV</button>
     <span id="sw-status" class="loading"></span>
   </div>
   <div class="cg2 cols2">
@@ -247,6 +253,7 @@ tbody td{padding:6px 10px;font-family:var(--mono)}
       <select id="opt-n"><option value="1000">1 000 (fast ~5s)</option><option value="2000" selected>2 000 (~10s)</option><option value="4000">4 000 (~20s)</option></select>
     </div>
     <button class="btp" onclick="runOptimizer()">▶ Run Pareto search</button>
+    <button class="btg" style="font-size:10px;padding:4px 10px" onclick="downloadCSV('pareto_optimizer.csv',lastOptResults)">⬇ CSV</button>
     <span id="opt-status" class="loading"></span>
   </div>
   <div class="cg2 cols2" id="opt-charts" style="display:none">
@@ -265,6 +272,76 @@ tbody td{padding:6px 10px;font-family:var(--mono)}
   </div>
   <table><thead><tr><th>Symbol</th><th>E₀ (V)</th><th>Ed (Wh/kg)</th><th>Ea (kJ/mol)</th><th>Inh eff %</th><th>Role</th><th>Note</th></tr></thead>
   <tbody id="atom-tbody"></tbody></table>
+</div>
+
+<!-- ═══════════ JOINT OPTIMISE ═══════════ -->
+<div class="panel" id="panel-joint">
+  <div class="sh"><span class="st">Joint optimisation — paste conditions + alloy composition simultaneously (7D)</span><div class="sl"></div></div>
+  <div style="background:var(--card);border:1px solid var(--bdr);border-radius:5px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--txd);line-height:1.7">
+    Searches <strong style="color:var(--tx)">d_um · c_KOH · T_C · Mg · In · Sn · Zn</strong> simultaneously.
+    Richer than fixing paste conditions and only optimising alloy —
+    the optimal alloy composition changes with operating conditions.
+    Finding: joint optimum (+101 Wh/kg vs fixed-condition baseline).
+  </div>
+  <div class="ctrl" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Samples</label>
+      <select id="joint-n"><option value="1000">1 000 (fast)</option><option value="2000" selected>2 000</option><option value="4000">4 000 (slow)</option></select>
+    </div>
+    <button class="btp" onclick="runJoint()">▶ Run joint search</button>
+    <button class="btg" style="font-size:10px;padding:4px 10px" onclick="downloadCSV('joint_optimisation.csv',lastJointResults)">⬇ CSV</button>
+    <span id="joint-status" class="loading"></span>
+  </div>
+  <div class="cg2 cols2" id="joint-charts" style="display:none;margin-top:14px">
+    <div class="cbox"><div class="ct">Net energy distribution — all valid configs</div><canvas id="ch-joint-dist" style="max-height:230px"></canvas></div>
+    <div class="cbox"><div class="ct">Optimal d_um vs T_C — top 300 configs</div><canvas id="ch-joint-scatter" style="max-height:230px"></canvas></div>
+  </div>
+  <div id="joint-table" style="margin-top:14px"></div>
+</div>
+
+<!-- ═══════════ ALLOY VS TEMP ═══════════ -->
+<div class="panel" id="panel-tempmap">
+  <div class="sh"><span class="st">Alloy vs temperature — optimal composition shifts with T</span><div class="sl"></div></div>
+  <div style="background:var(--card);border:1px solid var(--bdr);border-radius:5px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--txd);line-height:1.7">
+    <strong style="color:var(--o)">Cold cells (25°C)</strong> prefer Mg activation — corrosion baseline is low so activation helps more than it hurts.<br>
+    <strong style="color:var(--g)">Hot cells (60–65°C)</strong> prefer In+Sn inhibition — temperature already drives corrosion, adding Mg makes it worse.<br>
+    <strong style="color:var(--r)">Very hot (75°C)</strong> needs heavy inhibition (In+Zn) — Mg is counterproductive above ~65°C.
+  </div>
+  <div class="ctrl" style="display:flex;gap:12px;align-items:center">
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Samples/T</label>
+      <select id="tm-n"><option value="400">400 (fast)</option><option value="800" selected>800</option></select>
+    </div>
+    <button class="btp" onclick="runTempMap()">▶ Run</button>
+    <button class="btg" style="font-size:10px;padding:4px 10px" onclick="downloadCSV('alloy_vs_temperature.csv',lastTmResults)">⬇ CSV</button>
+    <span id="tm-status" class="loading"></span>
+  </div>
+  <div class="cg2 cols2" style="margin-top:14px">
+    <div class="cbox"><div class="ct">Net energy vs temperature</div><canvas id="ch-tm-ed" style="max-height:220px"></canvas></div>
+    <div class="cbox"><div class="ct">Optimal additive content (mol%) vs temperature</div><canvas id="ch-tm-comp" style="max-height:220px"></canvas></div>
+  </div>
+  <div id="tm-table" style="margin-top:14px"></div>
+</div>
+
+<!-- ═══════════ ALLOY VS CURRENT ═══════════ -->
+<div class="panel" id="panel-currentmap">
+  <div class="sh"><span class="st">Alloy vs current density — high-power needs less inhibitor</span><div class="sl"></div></div>
+  <div style="background:var(--card);border:1px solid var(--bdr);border-radius:5px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--txd);line-height:1.7">
+    <strong style="color:var(--b)">Low current (5 mA/cm²)</strong> — heavy inhibitors (7–8% total additives). Corrosion dominates at low j.<br>
+    <strong style="color:var(--g)">High current (50–70 mA/cm²)</strong> — light inhibitors (~1.5% total). Kinetics matter more; inhibitors reduce SSA and hurt performance.<br>
+    Design implication: <strong style="color:var(--tx)">alloy composition should match the intended operating regime.</strong>
+  </div>
+  <div class="ctrl" style="display:flex;gap:12px;align-items:center">
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Samples/j</label>
+      <select id="cm-n"><option value="400">400 (fast)</option><option value="800" selected>800</option></select>
+    </div>
+    <button class="btp" onclick="runCurrentMap()">▶ Run</button>
+    <button class="btg" style="font-size:10px;padding:4px 10px" onclick="downloadCSV('alloy_vs_current.csv',lastCmResults)">⬇ CSV</button>
+    <span id="cm-status" class="loading"></span>
+  </div>
+  <div class="cg2 cols2" style="margin-top:14px">
+    <div class="cbox"><div class="ct">Net energy vs current density</div><canvas id="ch-cm-ed" style="max-height:220px"></canvas></div>
+    <div class="cbox"><div class="ct">Total additive content (mol%) vs current</div><canvas id="ch-cm-add" style="max-height:220px"></canvas></div>
+  </div>
+  <div id="cm-table" style="margin-top:14px"></div>
 </div>
 
 <!-- ═══════════ CALIBRATE ═══════════ -->
@@ -437,6 +514,7 @@ async function runPolarisation(){
   const resp=await api('/api/polarisation',body);
   if(!resp.ok){status.textContent='Error';return}
   const pts=resp.data;
+  lastPolPts=pts;
   const js=pts.map(d=>d.j), Vs=pts.map(d=>d.V);
   const makeDs=(label,data,color,dash)=>({
     label,data:pts.map((d,i)=>({x:d.j,y:data[i]})),
@@ -480,6 +558,7 @@ async function runSweep(){
   const resp=await api('/api/sweep',body);
   if(!resp.ok){status.textContent='Error';return}
   const pts=resp.data.points;
+  lastSweepPts=pts;
   const label=document.getElementById('sw-param').options[document.getElementById('sw-param').selectedIndex].text;
   document.getElementById('sw-title-v').textContent=`Voltage vs ${label}`;
   document.getElementById('sw-title-e').textContent=`Energy vs ${label}`;
@@ -592,6 +671,7 @@ async function runOptimizer(){
   });
   if(!resp.ok){status.textContent='Error: '+resp.error.slice(0,80);return}
   const d=resp.data;
+  lastOptResults=d.all;
   status.textContent=`✓ ${d.n_valid} valid, ${d.n_pareto} Pareto configs`;
   document.getElementById('opt-charts').style.display='grid';
 
@@ -712,7 +792,172 @@ async function runCalibrate(){
       plugins:{legend:{display:true,labels:{boxWidth:8}}}}});
 }
 
-// ── MONTE CARLO ───────────────────────────────────────────────────────────────
+// ── JOINT OPTIMISATION ───────────────────────────────────────────────────────
+async function runJoint(){
+  const status=document.getElementById('joint-status');
+  status.innerHTML='<span class="spin"></span> Running 7D search...';
+  const resp=await api('/api/alloy/joint',{n_samples:parseInt(document.getElementById('joint-n').value)});
+  if(!resp.ok){status.textContent='Error: '+resp.error.slice(0,60);return}
+  const d=resp.data;
+  lastJointResults=d.all;
+  status.textContent=`✓ ${d.n_valid} valid configs`;
+  document.getElementById('joint-charts').style.display='grid';
+
+  // Net energy histogram
+  const bins=Array.from({length:20},(_,i)=>800+i*40);
+  const counts=bins.map(b=>d.all.filter(r=>r.net_ed>=b&&r.net_ed<b+40).length);
+  mkChart('ch-joint-dist',{type:'bar',
+    data:{labels:bins.map(b=>b+''),datasets:[{label:'Configs',data:counts,
+      backgroundColor:bins.map(b=>b>=1400?C.g+'88':b>=1200?C.y+'88':C.r+'88'),
+      borderWidth:0,borderRadius:2}]},
+    options:{responsive:true,maintainAspectRatio:true,
+      scales:{x:{grid:{color:'#1e2a1e'},title:{display:true,text:'Net energy (Wh/kg)'}},
+              y:{grid:{color:'#1e2a1e'},title:{display:true,text:'Count'}}},
+      plugins:{legend:{display:false}}}});
+
+  // d_um vs T scatter coloured by net energy
+  mkChart('ch-joint-scatter',{type:'scatter',
+    data:{datasets:[{label:'Configs',
+      data:d.all.map(r=>({x:r.T_C,y:r.d_um})),
+      backgroundColor:d.all.map(r=>{const t=(r.net_ed-800)/700;
+        return `rgba(${Math.round(248*(1-t)+74*t)},${Math.round(113*(1-t)+222*t)},${Math.round(113*(1-t)+128*t)},0.4)`}),
+      pointRadius:4,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'Temperature (°C)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'Particle size (µm)'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:false}}}});
+
+  // Top 10 table
+  const el=document.getElementById('joint-table');
+  el.innerHTML=`<div class="sh"><span class="st">Top 10 joint configurations</span><div class="sl"></div></div>
+  <div class="opt-row opt-head"><span>#</span><span>d µm</span><span>KOH M</span><span>T °C</span><span>Alloy</span><span>Net Wh/kg</span><span>Corr%</span></div>`+
+  d.top20.slice(0,10).map((r,i)=>{
+    const alloy=Object.entries(r.comp).filter(([k,v])=>v>0.05&&k!=='Al').map(([k,v])=>`${k}:${v.toFixed(1)}%`).join(' ');
+    return `<div class="opt-row">
+      <span style="color:var(--txd)">${i+1}</span>
+      <span style="color:var(--y)">${r.d_um.toFixed(0)}</span>
+      <span>${r.c_KOH.toFixed(1)}</span>
+      <span style="color:var(--r)">${r.T_C.toFixed(0)}</span>
+      <span style="font-size:10px;color:var(--txd)">${alloy||'pure Al'}</span>
+      <span style="color:var(--g)">${r.net_ed.toFixed(0)}</span>
+      <span style="color:var(--o)">${r.corr.toFixed(1)}</span>
+    </div>`;}).join('');
+}
+
+// ── TEMP MAP ──────────────────────────────────────────────────────────────────
+async function runTempMap(){
+  const status=document.getElementById('tm-status');
+  status.innerHTML='<span class="spin"></span> Optimising at each temperature...';
+  const resp=await api('/api/alloy/tempmap',{
+    temperatures:[25,40,55,60,65,70,75],
+    n_samples:parseInt(document.getElementById('tm-n').value)
+  });
+  if(!resp.ok){status.textContent='Error';return}
+  const pts=resp.data;
+  lastTmResults=pts;
+  status.textContent=`✓ ${pts.length} temperatures`;
+
+  mkChart('ch-tm-ed',{type:'line',
+    data:{datasets:[{label:'Net energy',data:pts.map(p=>({x:p.T,y:p.net_ed})),
+      borderColor:C.g,pointRadius:5,pointBackgroundColor:pts.map(p=>p.synergy?C.g:C.o),
+      borderWidth:2,fill:false,tension:0.3}]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'Temperature (°C)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'Net Wh/kg'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:false}}}});
+
+  // Stacked additive content
+  const els=['Mg','In','Sn','Zn'];
+  mkChart('ch-tm-comp',{type:'bar',
+    data:{labels:pts.map(p=>p.T+'°C'),
+      datasets:els.map((el,i)=>({
+        label:el,
+        data:pts.map(p=>p.comp[el]||0),
+        backgroundColor:[C.o,C.b,C.g,C.y][i]+'88',
+        borderColor:[C.o,C.b,C.g,C.y][i],
+        borderWidth:1,borderRadius:2,
+      }))},
+    options:{responsive:true,maintainAspectRatio:true,
+      scales:{x:{stacked:true,grid:{color:'#1e2a1e'}},
+              y:{stacked:true,title:{display:true,text:'mol%'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:true,labels:{boxWidth:8}}}}});
+
+  document.getElementById('tm-table').innerHTML=`<div class="sh"><span class="st">Optimal alloy at each temperature</span><div class="sl"></div></div>
+  <div class="opt-row opt-head"><span>T °C</span><span>Composition</span><span></span><span>Net Wh/kg</span><span>Corr%</span><span>Synergy</span><span>Strategy</span></div>`+
+  pts.map(p=>{
+    const comp=Object.entries(p.comp).filter(([k,v])=>v>0.05&&k!=='Al').map(([k,v])=>`${k}:${v.toFixed(1)}%`).join(' ');
+    const strat=p.T<=35?'Activation (Mg)':p.T<=65?'Balanced (synergy)':'Pure inhibition';
+    return `<div class="opt-row">
+      <span style="color:var(--r)">${p.T}</span>
+      <span style="font-size:10px;color:var(--txd)">${comp||'pure Al'}</span><span></span>
+      <span style="color:var(--g)">${p.net_ed.toFixed(0)}</span>
+      <span style="color:var(--o)">${p.corr.toFixed(1)}</span>
+      <span style="color:${p.synergy?'var(--g)':'var(--txd)'}">${p.synergy?'✓':'—'}</span>
+      <span style="font-size:10px;color:var(--txd)">${strat}</span>
+    </div>`;}).join('');
+}
+
+// ── CURRENT MAP ───────────────────────────────────────────────────────────────
+async function runCurrentMap(){
+  const status=document.getElementById('cm-status');
+  status.innerHTML='<span class="spin"></span> Optimising at each current density...';
+  const resp=await api('/api/alloy/currentmap',{
+    currents:[5,10,20,35,50,70],
+    n_samples:parseInt(document.getElementById('cm-n').value)
+  });
+  if(!resp.ok){status.textContent='Error';return}
+  const pts=resp.data;
+  lastCmResults=pts;
+  status.textContent=`✓ ${pts.length} current densities`;
+
+  mkChart('ch-cm-ed',{type:'line',
+    data:{datasets:[{label:'Net energy',data:pts.map(p=>({x:p.j,y:p.net_ed})),
+      borderColor:C.g,pointRadius:5,pointBackgroundColor:C.g,
+      borderWidth:2,fill:false,tension:0.3}]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'j (mA/cm²)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'Net Wh/kg'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:false}}}});
+
+  mkChart('ch-cm-add',{type:'line',
+    data:{datasets:[{label:'Total additives (mol%)',data:pts.map(p=>({x:p.j,y:p.total_add_pct})),
+      borderColor:C.b,backgroundColor:C.b+'18',fill:true,
+      pointRadius:5,pointBackgroundColor:C.b,borderWidth:2,tension:0.3}]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'j (mA/cm²)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'Total additives (mol%)'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:false}}}});
+
+  document.getElementById('cm-table').innerHTML=`<div class="sh"><span class="st">Optimal alloy at each current density</span><div class="sl"></div></div>
+  <div class="opt-row opt-head"><span>j mA/cm²</span><span>Composition</span><span></span><span>Net Wh/kg</span><span>Total add%</span><span>Synergy</span><span>Strategy</span></div>`+
+  pts.map(p=>{
+    const comp=Object.entries(p.comp).filter(([k,v])=>v>0.05&&k!=='Al').map(([k,v])=>`${k}:${v.toFixed(1)}%`).join(' ');
+    const strat=p.j<=10?'Heavy inhibition':p.j<=30?'Balanced':'Minimal inhibition';
+    return `<div class="opt-row">
+      <span style="color:var(--b)">${p.j}</span>
+      <span style="font-size:10px;color:var(--txd)">${comp||'pure Al'}</span><span></span>
+      <span style="color:var(--g)">${p.net_ed.toFixed(0)}</span>
+      <span style="color:var(--o)">${p.total_add_pct.toFixed(1)}</span>
+      <span style="color:${p.synergy?'var(--g)':'var(--txd)'}">${p.synergy?'✓':'—'}</span>
+      <span style="font-size:10px;color:var(--txd)">${strat}</span>
+    </div>`;}).join('');
+}
+
+// ── CSV EXPORT ────────────────────────────────────────────────────────────────
+let lastSweepPts=[], lastPolPts=[], lastOptResults=[], lastJointResults=[], lastTmResults=[], lastCmResults=[];
+
+function downloadCSV(filename, rows){
+  if(!rows||!rows.length) return;
+  const keys=Object.keys(rows[0]);
+  const csv=[keys.join(','),...rows.map(r=>keys.map(k=>{
+    const v=r[k];
+    return typeof v==='object'?JSON.stringify(v):v;
+  }).join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=filename; a.click();
+}
+
 async function runMonteCarlo(){
   const status=document.getElementById('mc-status');
   status.innerHTML='<span class="spin"></span> Running MC...';

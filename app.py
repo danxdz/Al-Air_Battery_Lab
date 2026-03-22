@@ -22,7 +22,9 @@ from al_air_model import (
     check_feasibility, polarisation_curve,
     fit_parameters, compute_rmse,
 )
-from al_air_alloy  import binary_sweep, optimize_alloy
+from al_air_alloy  import (binary_sweep, optimize_alloy,
+                            optimize_joint, temperature_alloy_map,
+                            current_alloy_map)
 from al_air_calibrate import (
     calibrate, monte_carlo_uncertainty,
     CALIB_CONFIG, J_POINTS,
@@ -362,6 +364,96 @@ def api_atoms():
     return ok(rows)
 
 
+# ── API: joint optimisation ───────────────────────────────────────────────────
+
+@app.route("/api/alloy/joint", methods=["POST"])
+def api_joint():
+    """Joint optimisation over paste conditions + alloy — 7D search."""
+    try:
+        body      = request.get_json(force=True) or {}
+        n_samples = int(body.get("n_samples", 2000))
+        j         = float(body.get("j", 50))
+
+        results = optimize_joint(n_samples=n_samples, j=j, verbose=True)
+
+        def fmt(r):
+            return {
+                "score":   round(float(r["score"]),   1),
+                "net_ed":  round(float(r["net_ed"]),  1),
+                "corr":    round(float(r["corr"]),    2),
+                "voltage": round(float(r["voltage"]), 4),
+                "power":   round(float(r["power"]),   1),
+                "synergy": bool(r["synergy"]),
+                "d_um":    round(float(r["d_um"]),    1),
+                "c_KOH":   round(float(r["c_KOH"]),  2),
+                "T_C":     round(float(r["T_C"]),     1),
+                "comp":    {k: round(float(v)*100, 2) for k, v in r["comp"].items()},
+            }
+
+        return ok({
+            "n_valid": len(results),
+            "top20":   [fmt(r) for r in results[:20]],
+            "all":     [fmt(r) for r in results[:300]],
+        })
+    except Exception as e:
+        return err(traceback.format_exc())
+
+
+# ── API: temperature alloy map ─────────────────────────────────────────────────
+
+@app.route("/api/alloy/tempmap", methods=["POST"])
+def api_tempmap():
+    """How optimal alloy shifts with temperature."""
+    try:
+        body   = request.get_json(force=True) or {}
+        temps  = body.get("temperatures", [25, 40, 55, 60, 70, 75])
+        n      = int(body.get("n_samples", 600))
+
+        res_by_T = temperature_alloy_map(temperatures=temps, n_samples=n,
+                                          verbose=True)
+        out = []
+        for T, r in res_by_T.items():
+            out.append({
+                "T":       T,
+                "net_ed":  round(float(r["net_ed"]),  1),
+                "corr":    round(float(r["corr"]),    2),
+                "voltage": round(float(r["voltage"]), 4),
+                "synergy": bool(r["synergy"]),
+                "comp":    {k: round(float(v)*100, 2) for k, v in r["comp"].items()},
+            })
+        return ok(out)
+    except Exception as e:
+        return err(traceback.format_exc())
+
+
+# ── API: current alloy map ─────────────────────────────────────────────────────
+
+@app.route("/api/alloy/currentmap", methods=["POST"])
+def api_currentmap():
+    """How optimal alloy shifts with operating current density."""
+    try:
+        body     = request.get_json(force=True) or {}
+        currents = body.get("currents", [5, 10, 20, 50, 70])
+        n        = int(body.get("n_samples", 600))
+
+        res_by_j = current_alloy_map(currents=currents, n_samples=n, verbose=True)
+        out = []
+        for j, r in res_by_j.items():
+            total_add = sum(v for k, v in r["comp"].items() if k != "Al") * 100
+            out.append({
+                "j":        j,
+                "net_ed":   round(float(r["net_ed"]),  1),
+                "corr":     round(float(r["corr"]),    2),
+                "voltage":  round(float(r["voltage"]), 4),
+                "synergy":  bool(r["synergy"]),
+                "total_add_pct": round(float(total_add), 2),
+                "comp":     {k: round(float(v)*100, 2) for k, v in r["comp"].items()},
+            })
+        return ok(out)
+    except Exception as e:
+        return err(traceback.format_exc())
+
+
 # ── Serve frontend ────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -370,9 +462,9 @@ def index():
 
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
     print("=" * 54)
     print("  Al-Air Battery Lab")
-    print("  Open: http://localhost:5000")
+    print(f"  Open: http://localhost:{port}")
     print("=" * 54)
-    port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port, threaded=True)

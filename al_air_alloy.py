@@ -419,6 +419,141 @@ def parse_comp(s):
     return comp
 
 
+def optimize_joint(n_samples=3000, j=50, verbose=True):
+    """
+    Joint optimisation over paste conditions AND alloy composition simultaneously.
+    Searches: d_um (5-300µm), c_KOH (1.5-6M), T_C (40-75°C)
+             + Mg/In/Sn/Zn fractions (within composition limits)
+
+    This is a 7-dimensional search — richer than fixing paste conditions
+    and only optimising alloy. The optimal alloy composition changes with
+    paste operating conditions.
+    """
+    from scipy.stats import qmc
+    import warnings; warnings.filterwarnings('ignore')
+
+    if verbose:
+        print(f"\n── Joint paste+alloy optimisation | {n_samples:,} samples ──")
+        print(f"  Dimensions: d_um · c_KOH · T_C · Mg · In · Sn · Zn (7D)")
+
+    lo = np.array([5,   1.5, 40, 0,    0,    0,    0   ])
+    hi = np.array([300, 6.0, 75, 0.03, 0.03, 0.03, 0.05])
+    S  = qmc.scale(qmc.LatinHypercube(d=7, seed=42).random(n_samples), lo, hi)
+
+    results = []
+    for row in S:
+        d_um, c_KOH, T_C, f_Mg, f_In, f_Sn, f_Zn = row
+        total_add = f_Mg + f_In + f_Sn + f_Zn
+        if total_add > 0.08: continue
+        comp = {"Al": float(1 - total_add)}
+        if f_Mg > 0.001: comp["Mg"] = float(f_Mg)
+        if f_In > 0.001: comp["In"] = float(f_In)
+        if f_Sn > 0.001: comp["Sn"] = float(f_Sn)
+        if f_Zn > 0.001: comp["Zn"] = float(f_Zn)
+        try:
+            r = cell_model(d_um=float(d_um), c_KOH=float(c_KOH), vf_pct=53,
+                           T_C=float(T_C), inh_pct=0, j_mA_cm2=j,
+                           composition=comp)
+            score = r['net_useful_ed'] * (1 - r['parasitic_pct'] / 100)
+            results.append({
+                "score":   float(score),
+                "net_ed":  float(r['net_useful_ed']),
+                "corr":    float(r['parasitic_pct']),
+                "voltage": float(r['V_cell']),
+                "power":   float(r['pd_W_kg_paste']),
+                "synergy": bool((r['alloy'] or {}).get('has_synergy', False)),
+                "d_um":    float(d_um),
+                "c_KOH":   float(c_KOH),
+                "T_C":     float(T_C),
+                "comp":    comp,
+                "result":  r,
+            })
+        except Exception:
+            pass
+
+    results.sort(key=lambda x: x["score"], reverse=True)
+
+    if verbose:
+        print(f"  Valid: {len(results):,}")
+        print(f"  Best joint optimum:")
+        best = results[0]
+        comp_str = '+'.join(f"{k}:{v*100:.2f}%"
+                            for k, v in best['comp'].items() if k != 'Al' and v > 0.001)
+        print(f"    d={best['d_um']:.0f}µm  KOH={best['c_KOH']:.1f}M  T={best['T_C']:.0f}°C")
+        print(f"    alloy: {comp_str if comp_str else 'pure Al'}")
+        print(f"    net={best['net_ed']:.0f} Wh/kg  corr={best['corr']:.1f}%  "
+              f"synergy={'Yes' if best['synergy'] else 'No'}")
+
+    return results
+
+
+def temperature_alloy_map(temperatures=None, additives=None,
+                           n_samples=800, j=50, verbose=True):
+    """
+    Show how the optimal alloy composition changes with temperature.
+    Finding: cold cells prefer Mg-based activation; hot cells need more inhibition.
+    """
+    if temperatures is None:
+        temperatures = [25, 40, 55, 60, 70, 75]
+    if additives is None:
+        additives = ['Mg', 'In', 'Sn', 'Zn']
+
+    if verbose:
+        print(f"\n── Optimal alloy vs temperature ──")
+        print(f"  {'T (°C)':>7}  {'Best composition':^40}  {'Net Wh/kg':>10}  {'Corr%':>6}  Dominant")
+        print("  " + "─"*78)
+
+    results_by_T = {}
+    for T in temperatures:
+        cfg = dict(BASE_CONFIG, T_C=T)
+        res, _ = optimize_alloy(cfg, additives, goal='balanced',
+                                n_samples=n_samples, j=j)
+        best = res[0]
+        comp_str = '+'.join(f"{k}:{v*100:.1f}%"
+                            for k, v in best['comp'].items()
+                            if k != 'Al' and v > 0.001) or 'pure Al'
+        if verbose:
+            print(f"  {T:>7}°C  {comp_str:<40}  "
+                  f"{best['net_ed']:>10.0f}  {best['corr']:>6.1f}%  "
+                  f"{'synergy' if best['synergy'] else 'no synergy'}")
+        results_by_T[T] = res[0]
+
+    return results_by_T
+
+
+def current_alloy_map(currents=None, additives=None,
+                       n_samples=800, verbose=True):
+    """
+    Show how the optimal alloy changes with operating current density.
+    Finding: high-power applications need less inhibitor (kinetics > corrosion suppression).
+    """
+    if currents is None:
+        currents = [5, 10, 20, 50, 70]
+    if additives is None:
+        additives = ['Mg', 'In', 'Sn', 'Zn']
+
+    if verbose:
+        print(f"\n── Optimal alloy vs current density ──")
+        print(f"  {'j (mA/cm²)':>12}  {'Best composition':^38}  {'Net Wh/kg':>10}  Total add%")
+        print("  " + "─"*72)
+
+    results_by_j = {}
+    for j in currents:
+        res, _ = optimize_alloy(BASE_CONFIG, additives, goal='balanced',
+                                n_samples=n_samples, j=j)
+        best = res[0]
+        comp_str = '+'.join(f"{k}:{v*100:.1f}%"
+                            for k, v in best['comp'].items()
+                            if k != 'Al' and v > 0.001) or 'pure Al'
+        total_add = sum(v for k, v in best['comp'].items() if k != 'Al') * 100
+        if verbose:
+            print(f"  {j:>12}  {comp_str:<38}  "
+                  f"{best['net_ed']:>10.0f}  {total_add:.1f}%")
+        results_by_j[j] = res[0]
+
+    return results_by_j
+
+
 def main():
     parser = argparse.ArgumentParser(description='Al-Air Alloy Explorer v2.0')
     parser.add_argument('--alloy',  type=str,   default=None,

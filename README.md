@@ -4,6 +4,9 @@
 > Couples paste rheology, ion transport, Butler-Volmer kinetics, oxide growth,  
 > and a multi-objective alloy optimizer in a single Python framework.
 
+🌐 **Live demo:** [al-air-battery-lab.onrender.com](https://al-air-battery-lab.onrender.com)  
+📦 **GitHub:** [github.com/danxdz/Al-Air_Battery_Lab](https://github.com/danxdz/Al-Air_Battery_Lab)
+
 ---
 
 ## What this is
@@ -19,7 +22,130 @@ This project does.
 
 ---
 
-## Quick results
+## Key findings
+
+These conclusions emerge directly from the model and are specific to paste-format
+cells — they do not appear in solid-plate Al-air literature.
+
+### 1. Optimal particle size: ~180 µm (not smaller)
+
+Counter-intuitively, **larger particles outperform smaller ones** for net useful energy.
+
+| Particle size | Net energy | Corrosion | Interpretation |
+|---|---|---|---|
+| 5 µm | 274 Wh/kg | 59% | Corrosion destroys most Al |
+| 10 µm | 548 Wh/kg | 42% | Still corrosion-dominated |
+| 50 µm | 1 233 Wh/kg | 13% | Improving fast |
+| **~180 µm** | **1 483 Wh/kg** | **4%** | **← peak net energy** |
+| 300 µm | 1 477 Wh/kg | 2.5% | Plateau — voltage falling |
+| 500 µm | 1 471 Wh/kg | 1.5% | No further gain |
+
+The peak at ~180 µm is the **exact crossover point** where the marginal gain from
+corrosion suppression is offset by the marginal loss in electrokinetic surface area.
+Above ~200 µm corrosion is already suppressed and bigger particles only reduce voltage.
+
+> *"Net useful energy density peaks at d ≈ 180 µm (1483 Wh/kg paste), where
+> corrosion losses fall below 4% without sacrificing kinetic surface area.
+> This paste-specific optimum has no equivalent in solid-plate Al-air models."*
+
+### 2. KOH optimum: ~3.2 M (below conventional practice)
+
+Most experimental papers use 4–6 M KOH inherited from solid-plate conventions.
+The model finds a paste-specific optimum at **3.2 M** — below this, conductivity
+limits performance; above it, corrosion rises faster than conductivity improves.
+
+### 3. Temperature optimum: ~60–65 °C
+
+Net energy peaks at 60 °C (1400 Wh/kg) and declines above 65 °C as Arrhenius-driven
+corrosion overtakes kinetic gains. Running hotter is counterproductive for paste cells.
+
+### 4. Inhibitor saturates at 60% loading
+
+Net energy plateaus above 60% inhibitor — further suppression reduces corrosion
+but Al utilisation is already near 97%, so no additional deliverable energy is gained.
+
+### 5. Particle size acts through interaction only (Sobol S₁ = 0.011, Sᴛ = 0.033)
+
+Particle diameter has near-zero first-order sensitivity but non-zero total sensitivity —
+it acts **exclusively through the corrosion×SSA coupling**. If corrosion is suppressed,
+particle size becomes irrelevant. Only visible via global sensitivity analysis.
+
+### 6. Optimal alloy is temperature-dependent
+
+The best alloy composition changes with operating temperature — a finding only
+visible with the joint optimiser.
+
+| Temperature | Optimal alloy | Strategy |
+|---|---|---|
+| 25 °C | Mg 1% + Sn 0.2% + Zn 0.6% | Activation (low corrosion baseline) |
+| 40 °C | Mg 1% + Sn + Zn | Balanced |
+| 60 °C | In 0.8% + Sn 0.5% + Zn 0.3% | Inhibition (T drives corrosion) |
+| 75 °C | In 1.5% + Zn 4% only | Heavy inhibition (Mg counterproductive) |
+
+Cold-start cells need a different alloy than hot-running cells. This has direct
+implications for Al-air battery design in variable-temperature applications.
+
+### 7. Optimal alloy is current-dependent
+
+High-power applications need **less inhibitor** — counterintuitive but physically
+clear: inhibitors reduce surface area, which hurts kinetics at high current.
+
+| Current | Total additives | Strategy |
+|---|---|---|
+| 5 mA/cm² | ~7.5% | Heavy inhibition (corrosion dominates) |
+| 20 mA/cm² | ~5.5% | Moderate inhibition |
+| 50 mA/cm² | ~1.6% | Minimal inhibition (kinetics matter) |
+| 70 mA/cm² | ~1.6% | Same — converged |
+
+### 8. Joint optimisation outperforms fixed-condition optimisation by +101 Wh/kg
+
+Optimising paste conditions (d, KOH, T) **simultaneously** with alloy composition
+finds better solutions than fixing conditions and only optimising alloy.
+Joint optimum: d ≈ 230–280 µm · T ≈ 63–67 °C · KOH ≈ 3.7–4.2 M · Mg+In/Sn synergy.
+
+### 9. System-level energy: 884 Wh/kg = 3.5× Li-ion
+
+| Level | Energy | Notes |
+|---|---|---|
+| Theoretical | 2 088 Wh/kg | n·F/M × Al mass fraction |
+| After voltage efficiency (71%) | 1 445 Wh/kg | largest single loss |
+| After engineering penalties | **884 Wh/kg** | ×0.612 (casing, electrolyte, packing) |
+| Li-ion typical | ~250 Wh/kg | comparison |
+
+Voltage efficiency is the dominant loss — larger than all mass penalties combined.
+Better cathode catalysts matter more than alloy optimisation.
+
+### 10. Corrosion-to-kinetics crossover at ~28 mA/cm²
+
+Below ~28 mA/cm², corrosion dominates — even with 7–8% total inhibitors the model
+cannot prevent 10–34% corrosion loss. The optimizer responds by loading up on
+inhibitors but net energy is still poor. Above 28 mA/cm², total additives drop
+sharply from 6% to 1.6% and stay there — kinetics become the limiting factor.
+
+| j (mA/cm²) | Total additives | Net energy | Corrosion | Regime |
+|---|---|---|---|---|
+| 5 | 7.6% | 625 Wh/kg | 33.8% | Corrosion-dominated |
+| 10 | 6.5% | 895 Wh/kg | 21.7% | Corrosion-dominated |
+| 25 | 5.4% | 1145 Wh/kg | 10.7% | Transition |
+| **~28** | — | — | — | **← crossover** |
+| 30 | 3.0% | 1188 Wh/kg | 9.9% | Kinetics-dominated |
+| 50 | 1.6% | 1293 Wh/kg | 7.6% | Kinetics-dominated |
+
+**Practical implication:** Al-air paste cells are not well-suited for low-power
+continuous discharge below ~30 mA/cm². This is a paste-specific finding —
+the crossover current depends on SSA (and therefore particle size).
+
+### 11. Optimal KOH concentration depends on particle size (coupled variables)
+
+Fixed-condition optimum: **3.2 M KOH** at d = 100 µm.
+Joint optimum: **4.9 M KOH** at d = 253 µm.
+
+At larger particle sizes, surface area is lower → less corrosion per unit KOH →
+higher KOH is affordable for improved conductivity. The two variables are coupled
+and cannot be optimised independently. This is only visible in joint 7D optimisation,
+not in separate parameter sweeps.
+
+---
 
 | Quantity | Value | Conditions |
 |---|---|---|
@@ -27,6 +153,9 @@ This project does.
 | Energy density (cell) | **1 445 Wh/kg** paste | active material only |
 | Energy density (system) | **884 Wh/kg** | incl. engineering penalties ×0.612 |
 | Power density | **186 W/kg** | geometric formula |
+| **Optimal particle size** | **~180 µm** | peak net energy 1 483 Wh/kg — paste-specific finding |
+| Optimal KOH | **3.2 M** | below conventional 4–6 M practice |
+| Optimal temperature | **60–65 °C** | corrosion overtakes kinetics above this |
 | Surrogate R² (voltage) | **0.9983** | MLP 128→128→64, 6 000 LHS samples |
 | Surrogate speed | **30 000 configs/sec** | 14× faster than physics model |
 | GA convergence | **generation 25** | stable across 3 independent runs |
@@ -95,8 +224,8 @@ index.html            Web dashboard — live calls to app.py via fetch()
 ## Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/al-air-paste-model
-cd al-air-paste-model
+git clone https://github.com/danxdz/Al-Air_Battery_Lab
+cd Al-Air_Battery_Lab
 
 pip install numpy scipy scikit-learn matplotlib flask
 ```
@@ -251,7 +380,7 @@ Most useful contributions, in priority order:
 If you use this model in research, please cite:
 
 ```bibtex
-@software{al_air_paste_model,
+@software{Al-Air_Battery_Lab,
   author  = {cooldan},
   title   = {Al–Air Paste Battery Computational Model},
   year    = {2025},
