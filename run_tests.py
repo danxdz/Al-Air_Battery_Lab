@@ -33,12 +33,13 @@ def test(name, fn):
         print(f"  ✗ {name:<55} FAIL: {str(e)[:55]}")
 
 # ─────────────────────────────────────────────────────────────────────────────
-print("=" * 70)
-print("FULL TEST SUITE — Al-Air Battery Lab")
-print("=" * 70)
+SEP = "-" * 70
+print(SEP)
+print("FULL TEST SUITE - Al-Air Battery Lab")
+print(SEP)
 
 # ── 1. BASE_CONFIG ────────────────────────────────────────────────────────────
-print("\n── 1. BASE_CONFIG & CALIB_CONFIG ───────────────────────────────────────")
+print("\n-- 1. BASE_CONFIG & CALIB_CONFIG --")
 
 def t_base_config():
     assert BASE_CONFIG['T_C']    == 25,  f"T={BASE_CONFIG['T_C']} should be 25"
@@ -53,7 +54,7 @@ def t_calib_matches():
 test("CALIB_CONFIG inherits BASE_CONFIG (25°C, 4M)", t_calib_matches)
 
 # ── 2. cell_model physics ─────────────────────────────────────────────────────
-print("\n── 2. cell_model — physics constraints ─────────────────────────────────")
+print("\n-- 2. cell_model - physics constraints --")
 
 def t_baseline():
     r = cell_model(**BASE_CONFIG, j_mA_cm2=50)
@@ -122,7 +123,7 @@ def t_edge_high_j():
 test("Very high j (200 mA/cm²) — no crash", t_edge_high_j)
 
 # ── 3. Alloy model ────────────────────────────────────────────────────────────
-print("\n── 3. Alloy model ──────────────────────────────────────────────────────")
+print("\n-- 3. Alloy model --")
 
 def t_pure_al():
     r = cell_model(**BASE_CONFIG, j_mA_cm2=50, composition={'Al':1.0})
@@ -158,7 +159,7 @@ def t_feasibility_ok():
 test("Valid composition → feasible", t_feasibility_ok)
 
 # ── 4. Thermal model ──────────────────────────────────────────────────────────
-print("\n── 4. Thermal model ────────────────────────────────────────────────────")
+print("\n-- 4. Thermal model --")
 
 def t_thermal_optimal_range():
     r = thermal_model(d_um=100,c_KOH=4,vf_pct=53,T_ambient_C=25,inh_pct=0,
@@ -202,7 +203,7 @@ def t_thermal_j_increases_dT():
 test("Cell temperature increases with current", t_thermal_j_increases_dT)
 
 # ── 5. Parameter sweeps ───────────────────────────────────────────────────────
-print("\n── 5. Parameter sweeps — optimal values ────────────────────────────────")
+print("\n-- 5. Parameter sweeps - optimal values --")
 
 def t_koh_peak():
     vals = [(c, cell_model(d_um=100,c_KOH=c,vf_pct=53,T_C=25,inh_pct=0,j_mA_cm2=50)['net_useful_ed'])
@@ -250,7 +251,7 @@ def t_corrosion_crossover():
 test("Corrosion-to-kinetics crossover: j=5 corr >> j=60 corr", t_corrosion_crossover)
 
 # ── 6. Alloy optimiser ────────────────────────────────────────────────────────
-print("\n── 6. Alloy optimiser ──────────────────────────────────────────────────")
+print("\n-- 6. Alloy optimiser --")
 
 def t_opt_returns_both():
     r, p = optimize_alloy(BASE_CONFIG,['Mg','In','Sn'],goal='balanced',n_samples=200,j=50)
@@ -283,7 +284,7 @@ def t_opt_score_sorted():
 test("Results sorted by score descending", t_opt_score_sorted)
 
 # ── 7. Calibration ────────────────────────────────────────────────────────────
-print("\n── 7. Calibration & Monte Carlo ────────────────────────────────────────")
+print("\n-- 7. Calibration & Monte Carlo --")
 
 def t_calib_self():
     """Model fitting its own output — RMSE should be very low either before or after."""
@@ -309,7 +310,7 @@ def t_mc_band_width():
 test("MC 90% band width in physically plausible range (10–200 mV)", t_mc_band_width)
 
 # ── 8. Sobol sensitivity ──────────────────────────────────────────────────────
-print("\n── 8. Sensitivity analysis ─────────────────────────────────────────────")
+print("\n-- 8. Sensitivity analysis --")
 
 def t_sobol_vf_dominant():
     result = sensitivity_analysis(BASE_CONFIG, n_steps=20)
@@ -328,7 +329,7 @@ def t_sobol_vf_dominant():
 test("Sensitivity: Al vol% has highest output range", t_sobol_vf_dominant)
 
 # ── 9. Flask app ──────────────────────────────────────────────────────────────
-print("\n── 9. Flask app ────────────────────────────────────────────────────────")
+print("\n-- 9. Flask app --")
 
 def t_app_syntax():
     with open(os.path.join(BASE_DIR, 'app.py'), encoding='utf-8') as f:
@@ -339,7 +340,7 @@ def t_routes_count():
     with open(os.path.join(BASE_DIR, 'app.py'), encoding='utf-8') as f: src = f.read()
     routes = re.findall(r'@app\.route\("(/api/[^"]+)"', src)
     assert len(routes) == 17, f"Expected 17 routes, found {len(routes)}: {routes}"
-test("app.py has exactly 15 API routes", t_routes_count)
+test("app.py has exactly 17 API routes", t_routes_count)
 
 def t_thermal_routes():
     with open(os.path.join(BASE_DIR, 'app.py'), encoding='utf-8') as f: src = f.read()
@@ -355,16 +356,16 @@ def t_port_env():
 test("Render port config: PORT env var + host=0.0.0.0", t_port_env)
 
 # ── 10. Frontend ──────────────────────────────────────────────────────────────
-print("\n── 10. Frontend (index.html) ───────────────────────────────────────────")
+print("\n-- 10. Frontend (index.html) --")
 
 def t_panels():
     with open(os.path.join(BASE_DIR, 'index.html'), encoding='utf-8') as f: html = f.read()
     expected = ['baseline','polarisation','sweeps','alloy','optimizer',
-                'atoms','thermal','degradation','heatmap','joint',
-                'tempmap','currentmap','calibrate','montecarlo']
+                'atoms','thermal','degradation','heatmap','validation',
+                'joint','tempmap','currentmap','calibrate','montecarlo']
     for p in expected:
         assert f'id="panel-{p}"' in html, f"Missing panel: {p}"
-test("All 14 panels present", t_panels)
+test("All 15 panels present", t_panels)
 
 def t_tooltips():
     with open(os.path.join(BASE_DIR, 'index.html'), encoding='utf-8') as f: html = f.read()
@@ -388,7 +389,7 @@ def t_default_25():
 test("Default temperature set to 25°C", t_default_25)
 
 # ── 11. README ────────────────────────────────────────────────────────────────
-print("\n── 11. README.md ───────────────────────────────────────────────────────")
+print("\n-- 11. README.md --")
 
 def t_17_findings():
     with open(os.path.join(BASE_DIR, 'README.md'), encoding='utf-8') as f: txt = f.read()
@@ -437,10 +438,10 @@ def t_sections():
 test("All key README sections present", t_sections)
 
 # ── SUMMARY ───────────────────────────────────────────────────────────────────
-print("\n" + "=" * 70)
+print("\n" + SEP)
 total = len(passed) + len(failed)
 print(f"RESULTS:  {len(passed)}/{total} passed   {len(failed)} failed")
-print("=" * 70)
+print(SEP)
 
 if failed:
     print(f"\n{'FAILED TESTS':}")

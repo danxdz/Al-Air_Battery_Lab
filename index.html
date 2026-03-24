@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#0a0e0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Al–Air Battery Lab</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -14,9 +17,17 @@
   --tx:#d4e8d4; --txd:#6b8f6b; --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:13px;min-height:100vh}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:13px;min-height:100vh;min-height:100dvh;overflow-x:hidden;padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0)}
 /* header */
 header{display:flex;align-items:center;gap:14px;padding:12px 22px;border-bottom:1px solid var(--bdr);background:var(--surf);position:sticky;top:0;z-index:100}
+.nav-toggle{display:none;flex-shrink:0;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border:1px solid var(--bdr);border-radius:8px;background:var(--card);color:var(--tx);font-size:18px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.nav-toggle:active{background:var(--dim)}
+.nav-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:240;-webkit-tap-highlight-color:transparent}
+.nav-backdrop.open{display:block}
+.nav-drawer-top{display:none;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;padding-top:max(14px,env(safe-area-inset-top));border-bottom:1px solid var(--bdr);flex-shrink:0}
+.nav-drawer-title{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--g)}
+.nav-drawer-close{width:44px;height:44px;border:1px solid var(--bdr);border-radius:8px;background:var(--card);color:var(--tx);font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
 .logo{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--g)}
 .logo span{color:var(--txd)}
 .badge{font-family:var(--mono);font-size:9px;background:#1a2e1a;color:var(--g);border:1px solid var(--bdr);border-radius:3px;padding:2px 7px;letter-spacing:.08em}
@@ -24,7 +35,7 @@ header{display:flex;align-items:center;gap:14px;padding:12px 22px;border-bottom:
 .hstat{text-align:right}.hstat .hv{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--g)}.hstat .hl{font-size:9px;color:var(--txd);letter-spacing:.08em}
 .hdiv{width:1px;height:26px;background:var(--bdr);margin:0 10px}
 /* layout */
-.shell{display:flex;height:calc(100vh - 47px)}
+.shell{display:flex;height:calc(100vh - 47px);height:calc(100dvh - 47px)}
 /* nav */
 nav{width:192px;flex-shrink:0;background:var(--surf);border-right:1px solid var(--bdr);padding:14px 0;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
 .nsec{font-size:9px;font-weight:500;color:var(--txd);letter-spacing:.12em;text-transform:uppercase;padding:10px 14px 4px}
@@ -32,7 +43,8 @@ nav{width:192px;flex-shrink:0;background:var(--surf);border-right:1px solid var(
 .nb:hover{color:var(--tx);background:var(--card)}.nb.active{color:var(--g);border-left-color:var(--g);background:#0f1e0f}
 .ni{font-size:13px;width:16px;text-align:center}
 /* main */
-main{flex:1;overflow-y:auto;padding:18px 22px}
+main{flex:1;overflow-y:auto;padding:18px 22px;-webkit-overflow-scrolling:touch}
+.layout-split{display:grid;grid-template-columns:minmax(0,300px) 1fr;gap:16px;align-items:start}
 .panel{display:none}.panel.active{display:block}
 /* cards */
 .crow{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
@@ -56,13 +68,13 @@ main{flex:1;overflow-y:auto;padding:18px 22px}
 .ctrl-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .ctrl-row:last-child{margin-bottom:0}
 label{font-size:11px;color:var(--txd);width:130px;flex-shrink:0}
-input[type=range]{flex:1;accent-color:var(--g);background:var(--bdr);height:4px;cursor:pointer}
+input[type=range]{flex:1;min-width:0;accent-color:var(--g);background:var(--bdr);height:6px;cursor:pointer;touch-action:manipulation}
 input[type=number],select{background:var(--bg);border:1px solid var(--bdr);border-radius:3px;color:var(--tx);font-family:var(--mono);font-size:11px;padding:4px 8px;width:90px;outline:none}
 input[type=number]:focus,select:focus{border-color:var(--g)}
 .vval{font-family:var(--mono);font-size:11px;color:var(--tx);width:52px;text-align:right;flex-shrink:0}
-.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:500;border:1px solid;transition:all .12s}
-.btp{background:#0f2e0f;color:var(--g);border-color:var(--g2)}.btp:hover{background:#172e17}
-.btg{background:transparent;color:var(--txd);border-color:var(--bdr)}.btg:hover{color:var(--tx)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:40px;padding:8px 14px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:500;border:1px solid;transition:all .12s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.btp{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:500;border:1px solid;transition:all .12s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;background:#0f2e0f;color:var(--g);border-color:var(--g2)}.btp:hover{background:#172e17}
+.btg{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:500;border:1px solid;transition:all .12s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;background:transparent;color:var(--txd);border-color:var(--bdr)}.btg:hover{color:var(--tx)}
 .bto{background:#2e1a0a;color:var(--o);border-color:#5a3010}.bto:hover{background:#3d2510}
 /* alloy sliders */
 .asl{display:flex;flex-direction:column;gap:8px}
@@ -109,11 +121,49 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
 .stdo{width:8px;height:8px;border-radius:2px}
 /* status bar */
 #status{font-family:var(--mono);font-size:10px;color:var(--txd);margin-top:8px;min-height:16px}
+.table-x-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;border-radius:5px;border:1px solid var(--bdr)}
+.table-x-scroll table{min-width:560px;margin-bottom:0}
+.table-wide-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:14px}
+.table-wide-scroll .opt-row{min-width:640px}
+.st.st-wrap{white-space:normal;line-height:1.35;max-width:100%}
+@media (max-width:900px){
+  .nav-toggle{display:inline-flex}
+  .nav-drawer-top{display:flex}
+  .nav-backdrop.open{display:block}
+  .shell{flex-direction:column;height:auto;min-height:calc(100vh - 52px);min-height:calc(100dvh - 52px)}
+  nav{position:fixed;left:0;top:0;bottom:0;width:min(300px,90vw);max-width:100%;padding:0 0 max(12px,env(safe-area-inset-bottom));display:flex;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateX(-102%);transition:transform .22s ease;z-index:250;box-shadow:none;border-right:1px solid var(--bdr);background:var(--surf)}
+  nav.nav-open{transform:translateX(0);box-shadow:8px 0 32px rgba(0,0,0,.35)}
+  nav .nsec:first-of-type{padding-top:6px}
+  main{width:100%;padding:14px max(14px,env(safe-area-inset-right)) 24px max(14px,env(safe-area-inset-left))}
+  header{flex-wrap:wrap;gap:10px;padding:10px 14px;padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+  .logo{font-size:13px;flex:1;min-width:0}
+  .badge{font-size:8px}
+  .hstat{flex:1 1 30%;min-width:72px;text-align:center}
+  .hstat .hv{font-size:12px}
+  .hdiv{display:none}
+  .cg2.cols2,.cg2.cols3{grid-template-columns:1fr}
+  .layout-split{grid-template-columns:1fr;gap:14px}
+  .ctrl-row{flex-wrap:wrap;align-items:flex-start}
+  .ctrl-row label{width:100%;margin-bottom:2px}
+  .ctrl-row input[type=range]{width:100%;height:8px}
+  .vval{width:auto;min-width:48px}
+  .crow .card{min-width:calc(50% - 6px);flex:1 1 140px}
+  .cbox canvas{max-height:min(55vw,260px)}
+  .st{font-size:9px}
+}
+@media (max-width:480px){
+  body{font-size:12px}
+  .crow .card{min-width:100%;flex:1 1 100%}
+  .hstat{flex:1 1 45%}
+  .nb{padding:10px 14px;font-size:13px}
+  .ni{width:20px}
+}
 </style>
 </head>
 <body>
 
 <header>
+  <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="side-nav" aria-label="Open menu" onclick="toggleNav(event)">☰</button>
   <div class="logo">Al<span>–</span>Air<span> /</span> Battery Lab</div>
   <span class="badge">Live · Flask + al_air_model.py</span>
   <div class="spacer"></div>
@@ -124,8 +174,14 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
   <div class="hstat"><div class="hv" id="hcorr">—</div><div class="hl">CORROSION</div></div>
 </header>
 
+<div class="nav-backdrop" id="nav-backdrop" onclick="closeNav()" role="presentation"></div>
+
 <div class="shell">
-<nav>
+<nav id="side-nav" aria-label="Lab sections">
+  <div class="nav-drawer-top">
+    <span class="nav-drawer-title">Lab sections</span>
+    <button type="button" class="nav-drawer-close" onclick="closeNav()" aria-label="Close menu">&times;</button>
+  </div>
   <div class="nsec">Analysis</div>
   <button class="nb active" onclick="nav(this,'baseline')"><span class="ni">⚡</span> Baseline</button>
   <button class="nb" onclick="nav(this,'polarisation')"><span class="ni">📈</span> Polarisation</button>
@@ -142,11 +198,43 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
   <button class="nb" onclick="nav(this,'tempmap')"><span class="ni">🌡️</span> Alloy vs Temp</button>
   <button class="nb" onclick="nav(this,'currentmap')"><span class="ni">⚡</span> Alloy vs Current</button>
   <div class="nsec">Calibration</div>
+  <button class="nb" onclick="nav(this,'validation')"><span class="ni">📊</span> Validation</button>
   <button class="nb" onclick="nav(this,'calibrate')"><span class="ni">🎯</span> Calibrate</button>
   <button class="nb" onclick="nav(this,'montecarlo')"><span class="ni">🎲</span> Monte Carlo</button>
 </nav>
 
 <main>
+
+<!-- ═══════════ VALIDATION ═══════════ -->
+<div class="panel" id="panel-validation">
+  <div class="sh"><span class="st">Validation against Katsoufis et al. 2020 — Energies 13(6), 1447</span><div class="sl"></div></div>
+  <div style="background:var(--card);border:1px solid var(--g2);border-radius:5px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--tx);line-height:1.8">
+    <strong style="color:var(--g)">4 mV match</strong> at j=1 mA/cm² — model predicts 1.254V, paper measures ≈1.25V (MnO₂-CB/CC cathode).<br>
+    Conditions differ: paper uses Al-6061 plate + paper electrolyte + 2M KOH + 20°C. Model uses paste + bulk KOH + 25°C.<br>
+    <span style="color:var(--txd)">Slope difference (paper steeper) is explained by paper separator ohmic resistance (~2100 mΩ·cm²) not present in paste model.</span>
+  </div>
+  <div class="ctrl" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Model KOH (M)</label><input type="number" id="vl-koh" value="2.0" step="0.5" style="width:65px"></div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Model T (°C)</label><input type="number" id="vl-T" value="20" style="width:60px"></div>
+    <button class="btp" onclick="runValidation()">▶ Compare</button>
+    <button class="btg" style="font-size:10px;padding:4px 10px" onclick="exportPNG('ch-vl-pol','katsoufis_validation.png')">⬇ PNG</button>
+    <span id="vl-status" class="loading"></span>
+  </div>
+  <div class="cg2 cols2" style="margin-top:14px">
+    <div class="cbox">
+      <div class="ct">Polarisation — model vs Katsoufis 2020 Fig 3 (MnO₂)</div>
+      <canvas id="ch-vl-pol" style="max-height:280px"></canvas>
+    </div>
+    <div class="cbox">
+      <div class="ct">Discharge V(t) — model vs Katsoufis 2020 Fig 5 (MnO₂)</div>
+      <canvas id="ch-vl-deg" style="max-height:280px"></canvas>
+    </div>
+  </div>
+  <div class="cbox" style="margin-top:14px">
+    <div class="ct">Residuals — model error vs literature data (mV)</div>
+    <canvas id="ch-vl-res" style="max-height:160px"></canvas>
+  </div>
+</div>
 
 <!-- ═══════════ BASELINE ═══════════ -->
 <div class="panel active" id="panel-baseline">
@@ -179,7 +267,9 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
     <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">KOH (M)</label><input type="number" id="p-koh" value="3.5" step="0.1" min="1" max="8" style="width:70px"></div>
     <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">T (°C)</label><input type="number" id="p-T" value="60" step="1" min="10" max="75" style="width:70px"></div>
     <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">Al vol%</label><input type="number" id="p-vf" value="53" step="1" min="15" max="65" style="width:70px"></div>
-    <button class="btp" onclick="runPolarisation()">▶ Run</button>
+    <button class="btp" onclick="runPolarisationWithCompare()">▶ Run</button>
+    <button class="btg" id="save-config-btn" style="font-size:10px;padding:4px 10px" onclick="saveCurrentConfig()">📌 Save config A</button>
+    <button class="btg" style="font-size:10px;padding:4px 10px" onclick="exportPNG('ch-pol-v','polarisation.png')">⬇ PNG</button>
     <button class="btg" style="font-size:10px;padding:4px 10px" onclick="downloadCSV('polarisation.csv',lastPolPts)">⬇ CSV</button>
     <span id="pol-status" class="loading"></span>
   </div>
@@ -210,6 +300,7 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
     <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">To</label><input type="number" id="sw-hi" value="8.0" style="width:70px"></div>
     <div style="display:flex;align-items:center;gap:6px"><label style="width:auto">j (mA/cm²)</label><input type="number" id="sw-j" value="50" style="width:70px"></div>
     <button class="btp" onclick="runSweep()">▶ Run</button>
+    <button class="btg" style="font-size:10px;padding:4px 10px" onclick="exportPNG('ch-sw-e','sweep_energy.png')">⬇ PNG</button>
     <button class="btg" style="font-size:10px;padding:4px 10px" onclick="downloadCSV('sweep.csv',lastSweepPts)">⬇ CSV</button>
     <span id="sw-status" class="loading"></span>
   </div>
@@ -226,7 +317,7 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
 <!-- ═══════════ ALLOY ═══════════ -->
 <div class="panel" id="panel-alloy">
   <div class="sh"><span class="st">Alloy builder — exact result from cell_model() for any composition</span><div class="sl"></div></div>
-  <div style="display:grid;grid-template-columns:300px 1fr;gap:16px">
+  <div class="layout-split">
     <div>
       <div class="ctrl">
         <div class="asl" id="alloy-sliders"></div>
@@ -259,6 +350,7 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
       <select id="opt-n"><option value="1000">1 000 (fast ~5s)</option><option value="2000" selected>2 000 (~10s)</option><option value="4000">4 000 (~20s)</option></select>
     </div>
     <button class="btp" onclick="runOptimizer()">▶ Run Pareto search</button>
+    <button class="btg" style="font-size:10px;padding:4px 10px" onclick="exportPNG('ch-opt-space','design_space.png')">⬇ PNG</button>
     <button class="btg" style="font-size:10px;padding:4px 10px" onclick="downloadCSV('pareto_optimizer.csv',lastOptResults)">⬇ CSV</button>
     <span id="opt-status" class="loading"></span>
   </div>
@@ -266,7 +358,7 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
     <div class="cbox"><div class="ct">Design space — net energy vs corrosion (colour = voltage)</div><canvas id="ch-opt-space" style="max-height:260px"></canvas></div>
     <div class="cbox"><div class="ct">Pareto front compositions — top 10</div><canvas id="ch-opt-comp" style="max-height:260px"></canvas></div>
   </div>
-  <div id="opt-table" style="margin-top:14px"></div>
+  <div class="table-wide-scroll" id="opt-table-wrap" style="margin-top:14px"><div id="opt-table"></div></div>
 </div>
 
 <!-- ═══════════ ATOMS ═══════════ -->
@@ -276,8 +368,8 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
     <div class="cbox"><div class="ct">Theoretical energy density (Wh/kg)</div><canvas id="ch-atom-ed" style="max-height:210px"></canvas></div>
     <div class="cbox"><div class="ct">Inhibitor effectiveness vs Ea</div><canvas id="ch-atom-inh" style="max-height:210px"></canvas></div>
   </div>
-  <table><thead><tr><th>Symbol</th><th>E₀ (V)</th><th>Ed (Wh/kg)</th><th>Ea (kJ/mol)</th><th>Inh eff %</th><th>Role</th><th>Note</th></tr></thead>
-  <tbody id="atom-tbody"></tbody></table>
+  <div class="table-x-scroll"><table><thead><tr><th>Symbol</th><th>E₀ (V)</th><th>Ed (Wh/kg)</th><th>Ea (kJ/mol)</th><th>Inh eff %</th><th>Role</th><th>Note</th></tr></thead>
+  <tbody id="atom-tbody"></tbody></table></div>
 </div>
 
 <!-- ═══════════ DEGRADATION ═══════════ -->
@@ -378,7 +470,7 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
     <div class="cbox"><div class="ct">Heat generation (W/m²) vs current</div><canvas id="ch-th-Q" style="max-height:210px"></canvas></div>
     <div class="cbox"><div class="ct">Voltage — isothermal vs self-heated</div><canvas id="ch-th-V" style="max-height:210px"></canvas></div>
   </div>
-  <div id="th-optfinder" style="margin-top:14px"></div>
+  <div class="table-wide-scroll" style="margin-top:14px"><div id="th-optfinder"></div></div>
 </div>
 
 <!-- ═══════════ JOINT OPTIMISE ═══════════ -->
@@ -402,7 +494,7 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
     <div class="cbox"><div class="ct">Net energy distribution — all valid configs</div><canvas id="ch-joint-dist" style="max-height:230px"></canvas></div>
     <div class="cbox"><div class="ct">Optimal d_um vs T_C — top 300 configs</div><canvas id="ch-joint-scatter" style="max-height:230px"></canvas></div>
   </div>
-  <div id="joint-table" style="margin-top:14px"></div>
+  <div class="table-wide-scroll" style="margin-top:14px"><div id="joint-table"></div></div>
 </div>
 
 <!-- ═══════════ ALLOY VS TEMP ═══════════ -->
@@ -425,7 +517,7 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
     <div class="cbox"><div class="ct">Net energy vs temperature</div><canvas id="ch-tm-ed" style="max-height:220px"></canvas></div>
     <div class="cbox"><div class="ct">Optimal additive content (mol%) vs temperature</div><canvas id="ch-tm-comp" style="max-height:220px"></canvas></div>
   </div>
-  <div id="tm-table" style="margin-top:14px"></div>
+  <div class="table-wide-scroll" style="margin-top:14px"><div id="tm-table"></div></div>
 </div>
 
 <!-- ═══════════ ALLOY VS CURRENT ═══════════ -->
@@ -448,13 +540,13 @@ input[type=file]:hover{border-color:var(--g);color:var(--tx);}
     <div class="cbox"><div class="ct">Net energy vs current density</div><canvas id="ch-cm-ed" style="max-height:220px"></canvas></div>
     <div class="cbox"><div class="ct">Total additive content (mol%) vs current</div><canvas id="ch-cm-add" style="max-height:220px"></canvas></div>
   </div>
-  <div id="cm-table" style="margin-top:14px"></div>
+  <div class="table-wide-scroll" style="margin-top:14px"><div id="cm-table"></div></div>
 </div>
 
 <!-- ═══════════ CALIBRATE ═══════════ -->
 <div class="panel" id="panel-calibrate">
   <div class="sh"><span class="st">Calibrate — calls calibrate() from al_air_calibrate.py</span><div class="sl"></div></div>
-  <div style="display:grid;grid-template-columns:280px 1fr;gap:16px">
+  <div class="layout-split" style="grid-template-columns:minmax(0,280px) 1fr">
     <div>
       <div class="ctrl">
         <div style="font-size:10px;color:var(--txd);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Upload CSV or paste data (j_mA/cm², V)</div>
@@ -517,14 +609,35 @@ Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.font.size=
 const C={g:'#4ade80',o:'#fb923c',y:'#fbbf24',b:'#38bdf8',r:'#f87171',p:'#e879f9'};
 
 function sv(id,v){document.getElementById(id).textContent=v}
+function closeNav(){
+  document.getElementById('side-nav')?.classList.remove('nav-open');
+  document.getElementById('nav-backdrop')?.classList.remove('open');
+  const t=document.getElementById('nav-toggle');
+  if(t) t.setAttribute('aria-expanded','false');
+}
+function toggleNav(e){
+  e?.preventDefault?.();
+  e?.stopPropagation?.();
+  const nav=document.getElementById('side-nav');
+  const bd=document.getElementById('nav-backdrop');
+  const t=document.getElementById('nav-toggle');
+  const open=!nav?.classList.contains('nav-open');
+  if(open){
+    nav?.classList.add('nav-open');
+    bd?.classList.add('open');
+    t?.setAttribute('aria-expanded','true');
+  }else closeNav();
+}
 function nav(el,id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
   document.getElementById('panel-'+id).classList.add('active');
   el.classList.add('active');
+  if(window.matchMedia('(max-width:900px)').matches) closeNav();
   if(id==='atoms' && !atomsLoaded) loadAtoms();
   if(id==='polarisation') runPolarisation();
 }
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeNav();});
 
 async function api(endpoint, body){
   const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -1294,6 +1407,152 @@ async function runOptFinder(){
     <span style="color:var(--g)">Green</span> = cell in optimal range (55–65°C) at that load condition.
     With natural convection (h=10), cells self-heat into the optimal range at j≈35–50 mA/cm².
   </div>`;
+}
+
+// ── PNG EXPORT ────────────────────────────────────────────────────────────────
+function exportPNG(canvasId, filename){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas){alert('Run the chart first');return;}
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = filename || 'chart.png';
+  a.click();
+}
+
+// ── COMPARISON OVERLAY ────────────────────────────────────────────────────────
+let savedConfig = null;
+function saveCurrentConfig(){
+  savedConfig = {
+    d:   parseFloat(document.getElementById('b-d').value),
+    koh: parseFloat(document.getElementById('b-koh').value)/10,
+    vf:  parseFloat(document.getElementById('b-vf').value),
+    T:   parseFloat(document.getElementById('b-T').value),
+    inh: parseFloat(document.getElementById('b-inh').value),
+    label: `d=${document.getElementById('b-d').value}µm KOH=${(document.getElementById('b-koh').value/10).toFixed(1)}M T=${document.getElementById('b-T').value}°C`
+  };
+  document.getElementById('save-config-btn').textContent='✓ Saved';
+  setTimeout(()=>document.getElementById('save-config-btn').textContent='📌 Save config A',1500);
+}
+
+async function runPolarisationWithCompare(){
+  await runPolarisation();
+  if(!savedConfig) return;
+  // Add saved config overlay
+  const resp = await api('/api/polarisation',{
+    d_um: savedConfig.d, c_KOH: savedConfig.koh,
+    vf_pct: savedConfig.vf, T_C: savedConfig.T, inh_pct: savedConfig.inh
+  });
+  if(!resp.ok || !charts['ch-pol-v']) return;
+  const pts = resp.data;
+  charts['ch-pol-v'].data.datasets.push({
+    label: `Config A: ${savedConfig.label}`,
+    data: pts.map(p=>({x:p.j, y:p.V})),
+    borderColor: C.o, pointRadius:0, borderWidth:1.5,
+    fill:false, tension:0.3, borderDash:[5,3]
+  });
+  charts['ch-pol-v'].update();
+}
+
+// ── KEYBOARD SHORTCUTS ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if(e.key === 'Enter') {
+    // Run whatever button is in the active panel
+    const active = document.querySelector('.panel.active');
+    if(active){
+      const btn = active.querySelector('.btp');
+      if(btn) btn.click();
+    }
+  }
+});
+
+// ── VALIDATION ────────────────────────────────────────────────────────────────
+// Katsoufis 2020, Fig 3 Curve 3 (MnO2-CB/CC, 2M KOH, ~20°C)
+const KATSOUFIS_POL = [
+  {j:2,V:1.42},{j:5,V:1.35},{j:10,V:1.28},{j:15,V:1.22},
+  {j:20,V:1.15},{j:25,V:1.08},{j:30,V:1.00},{j:35,V:0.92},
+  {j:40,V:0.83},{j:50,V:0.62}
+];
+// Katsoufis Fig 5 (MnO2, j=5 mA/cm²) — digitised V(t)
+const KATSOUFIS_DISCHARGE = [
+  {t:0,V:1.10},{t:5,V:1.08},{t:10,V:1.07},{t:20,V:1.06},
+  {t:30,V:1.05},{t:40,V:1.03},{t:50,V:1.00},{t:60,V:0.95},
+  {t:65,V:0.80},{t:68,V:0.40},{t:70,V:0.0}
+];
+
+async function runValidation(){
+  const status = document.getElementById('vl-status');
+  status.innerHTML='<span class="spin"></span> Computing...';
+  const koh = parseFloat(document.getElementById('vl-koh').value);
+  const T   = parseFloat(document.getElementById('vl-T').value);
+
+  // Polarisation
+  const respPol = await api('/api/polarisation',{d_um:100,c_KOH:koh,vf_pct:53,T_C:T,inh_pct:0});
+  if(!respPol.ok){status.textContent='Error';return;}
+  const polPts = respPol.data;
+
+  mkChart('ch-vl-pol',{type:'line',
+    data:{datasets:[
+      {label:`Model (${koh}M KOH, ${T}°C, paste)`,
+       data:polPts.map(p=>({x:p.j,y:p.V})),
+       borderColor:C.g,pointRadius:0,borderWidth:2,fill:false,tension:0.3},
+      {label:'Katsoufis 2020 Fig3 MnO₂ (2M KOH, 20°C, plate)',
+       data:KATSOUFIS_POL.map(p=>({x:p.j,y:p.V})),
+       borderColor:C.r,pointRadius:5,pointBackgroundColor:C.r,
+       borderWidth:2,fill:false,tension:0.3,showLine:true},
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'j (mA/cm²)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'V cell (V)'},grid:{color:'#1e2a1e'},min:0.4,max:1.6}},
+      plugins:{legend:{display:true,labels:{boxWidth:8,padding:10}}}}});
+
+  // Residuals
+  const residuals = KATSOUFIS_POL.map(kp=>{
+    const mp = polPts.find(p=>Math.abs(p.j-kp.j)<1) || polPts[Math.round((kp.j-1)/69*(polPts.length-1))];
+    return {x:kp.j, y:mp ? Math.round((mp.V-kp.V)*1000) : null};
+  }).filter(p=>p.y!==null);
+
+  const rmse = Math.sqrt(residuals.reduce((s,p)=>s+p.y*p.y,0)/residuals.length);
+  status.textContent=`✓ RMSE vs Katsoufis: ${rmse.toFixed(0)} mV`;
+
+  mkChart('ch-vl-res',{type:'bar',
+    data:{datasets:[{label:'Model − Katsoufis (mV)',
+      data:residuals,
+      backgroundColor:residuals.map(p=>p.y>0?C.o+'88':C.b+'88'),
+      borderColor:residuals.map(p=>p.y>0?C.o:C.b),
+      borderWidth:1,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'j (mA/cm²)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'Residual (mV)'},grid:{color:'#1e2a1e'}}},
+      plugins:{legend:{display:false},
+        annotation:{annotations:{
+          zero:{type:'line',yMin:0,yMax:0,borderColor:'#ffffff44',borderWidth:1}
+        }}
+      }
+    }
+  });
+
+  // Degradation comparison — j=5 mA/cm²
+  const respDeg = await api('/api/degradation',{
+    d_um:100,c_KOH:koh,vf_pct:53,T_C:T,inh_pct:0,
+    j:5,t_end_h:2,n_steps:80
+  });
+  if(!respDeg.ok) return;
+  const deg = respDeg.data;
+  mkChart('ch-vl-deg',{type:'line',
+    data:{datasets:[
+      {label:`Model j=5 (${koh}M, ${T}°C)`,
+       data:deg.t_h.map((t,i)=>({x:t*60,y:deg.V[i]})),  // convert h→min
+       borderColor:C.g,pointRadius:0,borderWidth:2,fill:false,tension:0.3},
+      {label:'Katsoufis Fig5 MnO₂ j=5',
+       data:KATSOUFIS_DISCHARGE.map(p=>({x:p.t,y:p.V})),
+       borderColor:C.r,pointRadius:3,pointBackgroundColor:C.r,
+       borderWidth:2,fill:false,tension:0.3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,parsing:false,
+      scales:{x:{type:'linear',title:{display:true,text:'Time (min)'},grid:{color:'#1e2a1e'}},
+              y:{title:{display:true,text:'V cell (V)'},grid:{color:'#1e2a1e'},min:0,max:1.4}},
+      plugins:{legend:{display:true,labels:{boxWidth:8,padding:10}}}}});
 }
 
 // ── CSV EXPORT ────────────────────────────────────────────────────────────────
